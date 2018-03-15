@@ -1,3 +1,7 @@
+# symlinks to datasets
+research/deeplab/datasets/pascal_voc_seg
+research/deeplab/datasets/cityscapes
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
