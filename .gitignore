@@ -1,3 +1,6 @@
+# OSX Files
+*.DS_Store
+
 # symlinks to datasets
 research/deeplab/datasets/pascal_voc_seg
 research/deeplab/datasets/cityscapes
