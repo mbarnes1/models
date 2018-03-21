@@ -162,6 +162,12 @@ flags.DEFINE_string('train_split', 'train',
 flags.DEFINE_string('dataset_dir', None, 'Where the dataset reside.')
 
 
+# Data pipeline
+flags.DEFINE_integer('num_readers', 1, 'Number of readers.')
+
+flags.DEFINE_integer('num_threads', 1, 'Number of threads during readings.')
+
+
 def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
     """Builds a clone of DeepLab.
 
@@ -253,6 +259,7 @@ def main(unused_argv):
 
     with tf.Graph().as_default():
         with tf.device(config.inputs_device()):
+            print 'Starting queues with {} readers and {} threads'.format(FLAGS.num_readers, FLAGS.num_threads)
             samples = input_generator.get(
                 dataset,
                 FLAGS.train_crop_size,
@@ -266,8 +273,8 @@ def main(unused_argv):
                 dataset_split=FLAGS.train_split,
                 is_training=True,
                 model_variant=FLAGS.model_variant,
-                num_readers=4,
-                num_threads=12
+                num_readers=FLAGS.num_readers,
+                num_threads=FLAGS.num_threads
             )
             inputs_queue = prefetch_queue.prefetch_queue(
                 samples, capacity=128 * config.num_clones)
