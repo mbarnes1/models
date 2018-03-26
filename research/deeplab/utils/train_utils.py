@@ -14,9 +14,50 @@
 # ==============================================================================
 """Utility functions for training."""
 
+from losses import spectral_loss
 import tensorflow as tf
 
 slim = tf.contrib.slim
+
+
+def add_spectral_loss_for_each_scale(scales_to_logits,
+                                     labels,
+                                     embedding_dim,
+                                     ignore_label,
+                                     loss_weight=1.0,
+                                     upsample_logits=True,
+                                     scope=None):
+    """
+    Adds spectral loss for logits of each scale.
+
+    :param scales_to_logits:  A map from logits names for different scales to logits.
+                              The logits have shape [batch, logits_height, logits_width, num_classes]
+    :param labels:            Groundtruth instance labels with shape [batch, image_height, image_width, 1].
+    :param embedding_dim:     Integer, the pixel embedding dimension.
+    :param ignore_label:      Integer, label to ignore.
+    :param loss_weight:       Float, loss weight.
+    :param upsample_logits:   Boolean, upsample logits or not.
+    :param scope:             String, the scope for the loss.
+    """
+    if labels is None:
+        raise ValueError('No label for softmax cross entropy loss.')
+
+    for scale, logits in scales_to_logits.iteritems():
+        loss_scope = None
+        if scope:
+            loss_scope = '{}_{}'.format(scope, scale)
+
+        if upsample_logits:
+            # Label is not downsampled, and instead we upsample logits.
+            logits = tf.image.resize_bilinear(logits, tf.shape(labels)[1:3], align_corners=True)
+            scaled_labels = labels
+        else:
+            # Label is downsampled to the same size as logits.
+            scaled_labels = tf.image.resize_nearest_neighbor(labels, tf.shape(logits)[1:3], align_corners=True)
+
+
+        not_ignore_mask = tf.to_float(tf.not_equal(scaled_labels, ignore_label)) * loss_weight
+        spectral_loss(scaled_labels, logits, weights=not_ignore_mask, scope=loss_scope)
 
 
 def add_softmax_cross_entropy_loss_for_each_scale(scales_to_logits,
@@ -65,9 +106,9 @@ def add_softmax_cross_entropy_loss_for_each_scale(scales_to_logits,
     one_hot_labels = slim.one_hot_encoding(
         scaled_labels, num_classes, on_value=1.0, off_value=0.0)
     tf.losses.softmax_cross_entropy(
-        one_hot_labels,
-        tf.reshape(logits, shape=[-1, num_classes]),
-        weights=not_ignore_mask,
+        one_hot_labels,  # batch*pixels x num_classes
+        tf.reshape(logits, shape=[-1, num_classes]),  # batch*pixels x num_classes
+        weights=not_ignore_mask,  # batch*pixels
         scope=loss_scope)
 
 
