@@ -6,8 +6,8 @@ from tensorflow.python.ops.losses.losses_impl import Reduction
 from tensorflow.python.util.tf_export import tf_export
 
 
-#LARGE = 1e8
-LARGE = 1
+LARGE = 1e8
+
 
 @tf_export("losses.spectral")
 def spectral_loss(
@@ -91,27 +91,6 @@ def batch_gather(params, indices):
     indices_nd = tf.stack([row_indices, indices], axis=2)  # nbatch x b x 2
     gathered_params = tf.gather_nd(params, indices_nd)  # nbatch x b x ...
     return gathered_params
-
-
-# def batch_gather_3d(params, indices):
-#     """
-#     :param params:   [nbatch x a x c] tensor
-#     :param indices:  [nbatch x b] tensor
-#     :return:         [nbatch x b x c] tensor, where elements are gathered from params
-#     """
-#     batch_size, b = indices.shape
-#     c = params.shape[2]
-#     dim0_indices = tf.range(batch_size)  # nbatch
-#     dim0_indices = _tile_along_new_axis(dim0_indices, b, axis=1)  # nbatch x b
-#     dim0_indices = _tile_along_new_axis(dim0_indices, c, axis=2)  # nbatch x b x c
-#
-#     dim2_indices = tf.range(c)  # c
-#     dim2_indices = _tile_along_new_axis(dim2_indices, b, axis=0)  # b x c
-#     dim2_indices = _tile_along_new_axis(dim2_indices, batch_size, axis=0)  # nbatch x b x c
-#
-#     indices_nd = tf.stack([dim0_indices, indices, dim2_indices], axis=3)  # nbatch x b x c x 3
-#     gathered_params = tf.gather_nd(params, indices_nd)  # nbatch x b x c
-#     return gathered_params
 
 
 def _tile_along_new_axis(params, multiples, axis=-1):
