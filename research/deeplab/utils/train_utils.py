@@ -41,11 +41,12 @@ def add_spectral_loss_for_each_scale(scales_to_logits,
     """
     if labels is None:
         raise ValueError('No label for softmax cross entropy loss.')
-    scales_to_logits.get_shape()[0].assert_is_compatible_with(labels.get_shape()[0])
-    batch_size = scales_to_logits.shape[0]
+    batch_size = labels.shape[0]
 
     print 'Learning with spectral loss.'
     for scale, logits in scales_to_logits.iteritems():
+        logits.get_shape()[0].assert_is_compatible_with(labels.get_shape()[0])
+
         loss_scope = None
         if scope:
             loss_scope = '{}_{}'.format(scope, scale)
