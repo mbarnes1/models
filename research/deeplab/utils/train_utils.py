@@ -31,7 +31,7 @@ def add_spectral_loss_for_each_scale(scales_to_logits,
     Adds spectral loss for logits of each scale.
 
     :param scales_to_logits:  A map from logits names for different scales to logits.
-                              The logits have shape [batch, logits_height, logits_width, num_classes]
+                              The logits have shape [batch, logits_height, logits_width, embedding_dim]
     :param labels:            Groundtruth instance labels with shape [batch, image_height, image_width, 1].
     :param embedding_dim:     Integer, the pixel embedding dimension.
     :param ignore_label:      Integer, label to ignore.
@@ -41,6 +41,8 @@ def add_spectral_loss_for_each_scale(scales_to_logits,
     """
     if labels is None:
         raise ValueError('No label for softmax cross entropy loss.')
+    scales_to_logits.get_shape()[0].assert_is_compatible_with(labels.get_shape()[0])
+    batch_size = scales_to_logits.shape[0]
 
     print 'Learning with spectral loss.'
     for scale, logits in scales_to_logits.iteritems():
@@ -56,7 +58,9 @@ def add_spectral_loss_for_each_scale(scales_to_logits,
             # Label is downsampled to the same size as logits.
             scaled_labels = tf.image.resize_nearest_neighbor(labels, tf.shape(logits)[1:3], align_corners=True)
 
-        not_ignore_mask = tf.not_equal(scaled_labels, ignore_label)  # tf.to_float(tf.not_equal(scaled_labels, ignore_label)) #* loss_weight
+        not_ignore_mask = tf.not_equal(scaled_labels, ignore_label)  # 2 x h x w x 1 # tf.to_float(tf.not_equal(scaled_labels, ignore_label)) #* loss_weight
+        not_ignore_mask = tf.reshape(not_ignore_mask, shape=[batch_size, -1])
+        logits = tf.reshape(scaled_labels, shape=[batch_size, -1])
         spectral_loss(scaled_labels, logits, not_ignore_mask, scope=loss_scope)
 
 

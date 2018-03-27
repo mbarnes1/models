@@ -38,7 +38,6 @@ def spectral_loss(
                              or if the shape of `instance_mask` is invalid or if `instance_mask` is None.  Also if
                              `instance_labels` or `embeddings` is None.
     """
-    # TODO: Check instance_mask input to this function is correct
     assert isinstance(subsample_power, int)
     assert 0 <= subsample_power <= 16  # tradeoff between memory and variance.
     subsample = 2**subsample_power
