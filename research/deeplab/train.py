@@ -167,6 +167,9 @@ flags.DEFINE_integer('num_readers', 1, 'Number of readers.')
 
 flags.DEFINE_integer('num_threads', 1, 'Number of threads during readings.')
 
+# Spectral
+flags.DEFINE_boolean('spectral', False, 'Use spectral loss to learn pixel instance embedding.')
+
 
 def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
     """Builds a clone of DeepLab.
@@ -201,8 +204,9 @@ def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
         is_training=True,
         fine_tune_batch_norm=FLAGS.fine_tune_batch_norm)
 
+    add_loss = train_utils.add_spectral_loss_for_each_scale if FLAGS.spectral else train_utils.add_softmax_cross_entropy_loss_for_each_scale
     for output, num_classes in outputs_to_num_classes.iteritems():
-        train_utils.add_softmax_cross_entropy_loss_for_each_scale(
+        add_loss(
             outputs_to_scales_to_logits[output],
             samples[common.LABEL],
             num_classes,

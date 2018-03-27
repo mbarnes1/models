@@ -42,6 +42,7 @@ def add_spectral_loss_for_each_scale(scales_to_logits,
     if labels is None:
         raise ValueError('No label for softmax cross entropy loss.')
 
+    print 'Learning with spectral loss.'
     for scale, logits in scales_to_logits.iteritems():
         loss_scope = None
         if scope:
@@ -55,9 +56,8 @@ def add_spectral_loss_for_each_scale(scales_to_logits,
             # Label is downsampled to the same size as logits.
             scaled_labels = tf.image.resize_nearest_neighbor(labels, tf.shape(logits)[1:3], align_corners=True)
 
-
-        not_ignore_mask = tf.to_float(tf.not_equal(scaled_labels, ignore_label)) * loss_weight
-        spectral_loss(scaled_labels, logits, weights=not_ignore_mask, scope=loss_scope)
+        not_ignore_mask = tf.not_equal(scaled_labels, ignore_label)  # tf.to_float(tf.not_equal(scaled_labels, ignore_label)) #* loss_weight
+        spectral_loss(scaled_labels, logits, not_ignore_mask, scope=loss_scope)
 
 
 def add_softmax_cross_entropy_loss_for_each_scale(scales_to_logits,
