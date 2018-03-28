@@ -190,9 +190,8 @@ def _process_batch(sess, original_images, semantic_predictions, image_names,
         else:
             image_filename = image_names[i]
 
-            save_annotation.save_annotation(
-                crop_semantic_prediction, raw_save_dir, image_filename,
-                add_colormap=False)
+            save_annotation.save_logits(
+                crop_semantic_prediction, raw_save_dir, image_filename)
 
 
 def main(unused_argv):
