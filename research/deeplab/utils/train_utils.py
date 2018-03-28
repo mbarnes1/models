@@ -62,7 +62,7 @@ def add_spectral_loss_for_each_scale(scales_to_logits,
         not_ignore_mask = tf.not_equal(scaled_labels, ignore_label)  # 2 x h x w x 1 # tf.to_float(tf.not_equal(scaled_labels, ignore_label)) #* loss_weight
         not_ignore_mask = tf.reshape(not_ignore_mask, shape=[batch_size, -1])  # batch x npixels
         scaled_labels = tf.reshape(scaled_labels, shape=[batch_size, -1])  # batch x npixels
-        logits = tf.reshape(logits, shape=[batch_size, -1, embedding_dim])  # batch x npxiels x embedding dim
+        logits = tf.reshape(logits, shape=[batch_size, -1, embedding_dim])  # batch x npixels x embedding dim
         spectral_loss(scaled_labels, logits, not_ignore_mask, scope=loss_scope)
 
 

@@ -58,7 +58,8 @@ def spectral_loss(
         instance_mask = math_ops.cast(instance_mask, dtypes.float32)  # tf.multinomial only accepts float probabilities
         large_instance_mask = instance_mask*LARGE
         tf.assert_equal(tf.is_finite(large_instance_mask), True)
-        sample_indices = tf.multinomial(large_instance_mask, subsample, output_dtype=tf.int32)  # batch_size x subsample
+        with tf.device("/cpu:0"):
+            sample_indices = tf.multinomial(large_instance_mask, subsample, output_dtype=tf.int32)  # batch_size x subsample
         instance_labels = batch_gather(instance_labels, sample_indices)  # batch_size x subsample
         embeddings = batch_gather(embeddings, sample_indices)  # batch_size x subsample x embedding_dim
 
