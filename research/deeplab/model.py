@@ -148,35 +148,57 @@ def predict_labels_multi_scale(images,
 
 
 def predict_labels(images, model_options, image_pyramid=None):
-  """Predicts segmentation labels.
+    """
+    Predicts segmentation labels.
 
-  Args:
-    images: A tensor of size [batch, height, width, channels].
-    model_options: A ModelOptions instance to configure models.
-    image_pyramid: Input image scales for multi-scale feature extraction.
+    Args:
+    :param images:         A tensor of size [batch, height, width, channels].
+    :param model_options:  A ModelOptions instance to configure models.
+    :param image_pyramid:  Input image scales for multi-scale feature extraction.
 
-  Returns:
-    A dictionary with keys specifying the output_type (e.g., semantic
-      prediction) and values storing Tensors representing predictions (argmax
-      over channels). Each prediction has size [batch, height, width].
-  """
-  outputs_to_scales_to_logits = multi_scale_logits(
-      images,
-      model_options=model_options,
-      image_pyramid=image_pyramid,
-      is_training=False,
-      fine_tune_batch_norm=False)
+    :return predictions:   A dictionary with keys specifying the output_type (e.g., semantic prediction) and values
+                           storing Tensors representing predictions (argmax over channels). Each prediction has
+                           size [batch, height, width].
+    """
+    logits_dict = predict_logits(images, model_options, image_pyramid=None)
+    predictions = {}
 
-  predictions = {}
-  for output in sorted(outputs_to_scales_to_logits):
-    scales_to_logits = outputs_to_scales_to_logits[output]
-    logits = tf.image.resize_bilinear(
-        scales_to_logits[_MERGED_LOGITS_SCOPE],
-        tf.shape(images)[1:3],
-        align_corners=True)
-    predictions[output] = tf.argmax(logits, 3)
+    for output, logits in logits_dict.iteritems():
+        predictions[output] = tf.argmax(logits, 3)
 
-  return predictions
+    return predictions
+
+
+def predict_logits(images, model_options, image_pyramid=None):
+    """
+    Predicts logits
+
+    Args:
+    :param images:         A tensor of size [batch, height, width, channels].
+    :param model_options:  A ModelOptions instance to configure models.
+    :param image_pyramid:  Input image scales for multi-scale feature extraction.
+
+    :return logits:        A dictionary with keys specifying the output_type (e.g., semantic prediction) and values
+                           storing Tensors representing logits. Each logit has size
+                           [batch, height, width, embedding_dim].
+    """
+    outputs_to_scales_to_logits = multi_scale_logits(
+        images,
+        model_options=model_options,
+        image_pyramid=image_pyramid,
+        is_training=False,
+        fine_tune_batch_norm=False)
+
+    logits_dict = {}
+    for output in sorted(outputs_to_scales_to_logits):
+        scales_to_logits = outputs_to_scales_to_logits[output]
+        logits = tf.image.resize_bilinear(
+            scales_to_logits[_MERGED_LOGITS_SCOPE],
+            tf.shape(images)[1:3],
+            align_corners=True)
+        logits_dict[output] = logits
+
+    return logits_dict
 
 
 def scale_dimension(dim, scale):

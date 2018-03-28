@@ -30,23 +30,36 @@ def save_annotation(label,
                     filename,
                     add_colormap=True,
                     colormap_type=get_dataset_colormap.get_pascal_name()):
-  """Saves the given label to image on disk.
+    """
+    Saves the given label to image on disk.
 
-  Args:
-    label: The numpy array to be saved. The data will be converted
-      to uint8 and saved as png image.
-    save_dir: The directory to which the results will be saved.
-    filename: The image filename.
-    add_colormap: Add color map to the label or not.
-    colormap_type: Colormap type for visualization.
-  """
-  # Add colormap for visualizing the prediction.
-  if add_colormap:
-    colored_label = get_dataset_colormap.label_to_color_image(
-        label, colormap_type)
-  else:
-    colored_label = label
+    Args:
+    :param label:         The numpy array to be saved. The data will be converted to uint8 and saved as png image.
+    :param save_dir:      The directory to which the results will be saved.
+    :param filename:      The image filename.
+    :param add_colormap:  Add color map to the label or not.
+    :param colormap_type: Colormap type for visualization.
+    """
+    # Add colormap for visualizing the prediction.
+    if add_colormap:
+        colored_label = get_dataset_colormap.label_to_color_image(
+            label, colormap_type)
+    else:
+        colored_label = label
 
-  pil_image = img.fromarray(colored_label.astype(dtype=np.uint8))
-  with tf.gfile.Open('%s/%s.png' % (save_dir, filename), mode='w') as f:
-    pil_image.save(f, 'PNG')
+    pil_image = img.fromarray(colored_label.astype(dtype=np.uint8))
+    with tf.gfile.Open('%s/%s.png' % (save_dir, filename), mode='w') as f:
+        pil_image.save(f, 'PNG')
+
+
+def save_logits(logits,
+                save_dir,
+                filename):
+    """
+    Save raw logits to npy binary file.
+    :param logits:    The numpy array to be saved.
+    :param save_dir:  The directory to which the results will be saved.
+    :param filename:  The image filename.
+    """
+    with tf.gfile.Open('%s/%s.npy' % (save_dir, filename), mode='w') as f:
+        np.save(f, logits)

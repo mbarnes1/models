@@ -204,7 +204,8 @@ def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
         is_training=True,
         fine_tune_batch_norm=FLAGS.fine_tune_batch_norm)
 
-    add_loss = train_utils.add_spectral_loss_for_each_scale if FLAGS.spectral else train_utils.add_softmax_cross_entropy_loss_for_each_scale
+    add_loss = train_utils.add_spectral_loss_for_each_scale if FLAGS.spectral \
+        else train_utils.add_softmax_cross_entropy_loss_for_each_scale
     for output, num_classes in outputs_to_num_classes.iteritems():
         add_loss(
             outputs_to_scales_to_logits[output],
