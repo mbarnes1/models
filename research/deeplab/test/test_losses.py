@@ -57,3 +57,31 @@ class MyTestCase(tf.test.TestCase):
             labels_tensor = tf.convert_to_tensor(labels)  # 1 x 5
             loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=12)
             self.assertAlmostEqual(loss.eval(), 0.16, places=1)
+
+    def test_spectral_loss_semantic(self):
+        with self.test_session():
+            labels = [[0, 0, 1, 2, 2]]
+            labels_tensor = tf.convert_to_tensor(labels)  # 1 x 5
+            embeddings = tf.one_hot(labels_tensor, 3)  # 1 x 5 x 3
+            instance_mask = tf.ones((1, 5))
+            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=8, semantic=True)
+            self.assertAlmostEqual(loss.eval(), 0.)
+
+            # Induce 1 FP by flipping one label
+            labels = [[0, 0, 1, 1, 2]]
+            labels_tensor = tf.convert_to_tensor(labels)  # 1 x 5
+            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=12, semantic=True)
+            self.assertAlmostEqual(loss.eval(), 0.5, places=1)
+
+    def test_spectral_loss_semantic_2d(self):
+        with self.test_session():
+            labels = [[0, 0, 1, 2, 2], [0, 1, 1, 0, 0]]
+            labels_tensor = tf.convert_to_tensor(labels)  # 2 x 5
+            embeddings = tf.one_hot(labels_tensor, 3)  # 2 x 5 x 3
+            instance_mask = tf.ones((2, 5))
+            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=8, semantic=True)
+            self.assertAlmostEqual(loss.eval(), 0.)
+
+if __name__ == '__main__':
+    tf.test.main()
+    

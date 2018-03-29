@@ -17,7 +17,8 @@ def spectral_loss(
         scope=None,
         loss_collection=ops.GraphKeys.LOSSES,
         reduction=Reduction.SUM_BY_NONZERO_WEIGHTS,
-        subsample_power=13):
+        subsample_power=13,
+        semantic=False):
     """
     Creates a spectral loss. Modified from tf.losses.softmax_cross_entropy.
     :param instance_labels:  `[batch_size, num_pixels]` target instance labels.
@@ -30,6 +31,8 @@ def spectral_loss(
     :param reduction:        Type of reduction to apply to loss.
     :param subsample_power:  Uniformly randomly sample 2**subsample_power many pixels per image when computing the loss.
                              Must be power of 2 to avoid bias in tensorflow random sampling.
+    :semantic:               Computes the loss for each semantic class independently (default : False - Computes for
+                             all classes together, implying an error interclasses)
     :return loss:            Tensor of the same type as embeddings. If `reduction` is:
                                 `NONE` = shape [batch_size, subsample, subsample]
                                 Else   = Scalar
@@ -63,18 +66,50 @@ def spectral_loss(
         instance_labels = batch_gather(instance_labels, sample_indices)  # batch_size x subsample
         embeddings = batch_gather(embeddings, sample_indices)  # batch_size x subsample x embedding_dim
 
-        # (Optional) Compute mask for pixels which belong to same semantic class. Or make this an input?
-        # TODO: Compute or pass this in
+        if semantic:
+            # Compute mask for pixels which belong to same semantic class.
+            batch_size, _ = instance_labels.shape
 
-        # Compute A
-        A = labels_to_adjacency(instance_labels)  # batch_size x subsample x subsample
+            # Find the different class
+            semanticClass, _ = tf.unique(tf.reshape(instance_labels, [-1]))
 
-        # Compute VV^T
-        A_predicted = tf.matmul(embeddings, tf.transpose(embeddings, [0, 2, 1]))  # batch_size x subsample x subsample
+            def errorSemanticClass(sc):
+                """
+                    Computes the error associated to the given semantic class
+                    On the different images of the batch
+                
+                    Arguments:
+                        sc {class} -- Semantic Class
+                """
+                loss = 0.
+                for image in range(batch_size):
+                    # Select semantic pixels
+                    selection = tf.equal(instance_labels[image], sc)
+                    selection_size = tf.reduce_sum(tf.cast(selection, tf.int32))
 
-        # Compute loss
-        # TODO: pass weights, which is semantic adjacency matrix
-        loss = tf.losses.mean_squared_error(A, A_predicted, scope=scope, loss_collection=loss_collection, reduction=reduction)
+                    labelsSC = tf.expand_dims(tf.boolean_mask(instance_labels[image], selection), 0) # 1 x selection
+                    embeddingSC = tf.expand_dims(tf.boolean_mask(embeddings[image], selection, axis = 0), 0) # 1 x selection x embedding_dim
+
+                    # Constructs adjency
+                    ASCImage = labels_to_adjacency(labelsSC, selection_size)
+                    A_predictedSCImage = tf.matmul(embeddingSC, tf.transpose(embeddingSC, [0, 2, 1]))
+
+                    loss += tf.losses.mean_squared_error(ASCImage, A_predictedSCImage, scope=scope, loss_collection=loss_collection, reduction=reduction)
+                return loss
+            
+            errorsSemantic = tf.map_fn(errorSemanticClass, semanticClass, dtype='float32')
+            loss = tf.reduce_sum(errorsSemantic)
+        else:
+            # Compute A
+            A = labels_to_adjacency(instance_labels)# batch_size x subsample x subsample
+            
+            # Compute VV^T
+            A_predicted = tf.matmul(embeddings, tf.transpose(embeddings, [0, 2, 1]))  # batch_size x subsample x subsample
+
+            # Compute loss
+            # TODO: pass weights, which is semantic adjacency matrix
+            loss = tf.losses.mean_squared_error(A, A_predicted, scope=scope, loss_collection=loss_collection, reduction=reduction)
+        
         return loss
 
 
@@ -107,12 +142,13 @@ def _tile_along_new_axis(params, multiples, axis=-1):
     return tiled_params
 
 
-def labels_to_adjacency(labels):
+def labels_to_adjacency(labels, m = None):
     """
     :param labels:       N x M Tensor, where N is the batch size and M is the number of nodes.
     :return adjacency:   N x M x M ByteTensor Variable.
     """
-    m = labels.shape[1]
+    if m is None:
+        m = tf.convert_to_tensor(labels.shape[1])
     labels = _tile_along_new_axis(labels, m, axis=1)
     adjacency = tf.equal(labels, tf.transpose(labels, [0, 2, 1]))
     return adjacency
