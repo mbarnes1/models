@@ -80,10 +80,11 @@ def spectral_loss(
 
 def batch_gather(params, indices):
     """
-    Perform different gather operation (with same number of indices per gather) on each sample in batch.
-    :param params:   [nbatch x a x ...] tensor
-    :param indices:  [nbatch x b] tensor
-    :return:         [nbatch x b x ...] tensor, where elements are gathered from params
+    Perform different gather operation on each sample in batch. See tf.gather for more information.
+    :param params:                   [nbatch x a x ...] tensor
+    :param indices:                  [nbatch x b] tensor. indices[i] specifies the gather operation for params[i].
+    :return gathered_params:         [nbatch x b x ...] tensor, where gathered_params[i] are gathered from params[i]
+                                     according to indices[i].
     """
     batch_size, num_indices = indices.shape
     row_indices = tf.range(batch_size)  # nbatch
@@ -109,7 +110,10 @@ def _tile_along_new_axis(params, multiples, axis=-1):
 
 def labels_to_adjacency(labels):
     """
-    :param labels:       N x M Tensor, where N is the batch size and M is the number of nodes.
+    Perform all pairwise label comparisons to create a binary adjacency matrix, specifying whether two pixels have the
+    same label.
+    :param labels:       N x M Tensor, where N is the batch size and M is the number of nodes. Each entry is an integer
+                         label.
     :return adjacency:   N x M x M ByteTensor Variable.
     """
     m = labels.shape[1]
