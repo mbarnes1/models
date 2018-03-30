@@ -90,7 +90,7 @@ _FOLDERS_MAP = {
 # A map from data type to filename postfix.
 _POSTFIX_MAP = {
     'image': '_leftImg8bit',
-    'label': '_gtFine_labelTrainIds',
+    'label': '_gtFine_instanceTrainIds',
 }
 
 # A map from data type to data format.
@@ -111,7 +111,7 @@ def _get_files(data, dataset_split):
     dataset_split: String, dataset split ('train', 'val', 'test')
 
   Returns:
-    A list of sorted file names or None when getting label for
+    A list of sorted file names or None when getting instance or label for
       test set.
   """
   if data == 'label' and dataset_split == 'test':
