@@ -71,7 +71,8 @@ def spectral_loss(
             batch_size, _ = instance_labels.shape
 
             # Find the different class
-            semanticClass, _ = tf.unique(tf.reshape(instance_labels, [-1]))
+            semantic_labels = tf.cast(tf.floor(instance_labels / 1000), tf.int32) # See cityscapesscripts/preparation/json2instanceImg.py
+            semanticClass, _ = tf.unique(tf.reshape(semantic_labels, [-1]))
 
             def errorSemanticClass(sc):
                 """
@@ -84,7 +85,7 @@ def spectral_loss(
                 loss = 0.
                 for image in range(batch_size):
                     # Select semantic pixels
-                    selection = tf.equal(instance_labels[image], sc)
+                    selection = tf.equal(semantic_labels[image], sc)
                     selection_size = tf.reduce_sum(tf.cast(selection, tf.int32))
 
                     labelsSC = tf.expand_dims(tf.boolean_mask(instance_labels[image], selection), 0) # 1 x selection
