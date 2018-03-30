@@ -107,14 +107,14 @@ def _get_files(data, dataset_split):
   """Gets files for the specified data type and dataset split.
 
   Args:
-    data: String, desired data ('image' or 'label').
+    data: String, desired data ('image' or 'label' or 'instance').
     dataset_split: String, dataset split ('train', 'val', 'test')
 
   Returns:
-    A list of sorted file names or None when getting label for
+    A list of sorted file names or None when getting instance or label for
       test set.
   """
-  if data == 'label' and dataset_split == 'test':
+  if data == 'isntance' and dataset_split == 'test':
     return None
   pattern = '*%s.%s' % (_POSTFIX_MAP[data], _DATA_FORMAT_MAP[data])
   search_files = os.path.join(
@@ -134,13 +134,15 @@ def _convert_dataset(dataset_split):
       image file with specified postfix could not be found.
   """
   image_files = _get_files('image', dataset_split)
-  label_files = _get_files('label', dataset_split)
+  # label_files = _get_files('label', dataset_split)
+  isntance_files = _get_files('instance', dataset_split)
 
   num_images = len(image_files)
   num_per_shard = int(math.ceil(num_images / float(_NUM_SHARDS)))
 
   image_reader = build_data.ImageReader('png', channels=3)
-  label_reader = build_data.ImageReader('png', channels=1)
+  # label_reader = build_data.ImageReader('png', channels=1)
+  instance_reader = build_data.ImageReader('png', channels=1)
 
   for shard_id in range(_NUM_SHARDS):
     shard_filename = '%s-%05d-of-%05d.tfrecord' % (
@@ -156,10 +158,15 @@ def _convert_dataset(dataset_split):
         # Read the image.
         image_data = tf.gfile.FastGFile(image_files[i], 'r').read()
         height, width = image_reader.read_image_dims(image_data)
-        # Read the semantic segmentation annotation.
-        seg_data = tf.gfile.FastGFile(label_files[i], 'r').read()
-        seg_height, seg_width = label_reader.read_image_dims(seg_data)
-        if height != seg_height or width != seg_width:
+        # # Read the semantic segmentation annotation.
+        # seg_data = tf.gfile.FastGFile(label_files[i], 'r').read()
+        # seg_height, seg_width = label_reader.read_image_dims(seg_data)
+        # if height != seg_height or width != seg_width:
+        #   raise RuntimeError('Shape mismatched between image and label.')
+        # Read instance
+        ins_data = tf.gfile.FastGFile(isntance_files[i], 'r').read()
+        ins_height, ins_width = instance_reader.read_image_dims(ins_data)
+        if height != ins_height or width != ins_width:
           raise RuntimeError('Shape mismatched between image and label.')
         # Convert to tf example.
         re_match = _IMAGE_FILENAME_RE.search(image_files[i])
@@ -167,7 +174,7 @@ def _convert_dataset(dataset_split):
           raise RuntimeError('Invalid image filename: ' + image_files[i])
         filename = os.path.basename(re_match.group(1))
         example = build_data.image_seg_to_tfexample(
-            image_data, filename, height, width, seg_data)
+            image_data, filename, height, width, ins_data)
         tfrecord_writer.write(example.SerializeToString())
     sys.stdout.write('\n')
     sys.stdout.flush()
