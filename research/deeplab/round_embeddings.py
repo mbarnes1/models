@@ -9,12 +9,13 @@ from datasets.cityscapesScripts.cityscapesscripts.evaluation.evalInstanceLevelSe
 from functools import partial
 import imageio
 from itertools import izip
+import matplotlib.cm
+import matplotlib.colors
 import numpy as np
 import os
 from utils.cluster_utils import kwik_cluster, lp_cost
 
 
-#
 EMBEND = '.npy'  # predicted pixel embedding file ending
 # For now, assume both these files in same directory, e.g. data/datasets/cityscapes/gtFine/val/
 IGNORELABEL = 255
@@ -30,6 +31,9 @@ def batch_eval(args):
     if not os.path.exists(results_dir):
         os.mkdir(results_dir)
 
+    pred_paths = []
+    gt_paths = []
+
     for dirName, _, fileList in os.walk(args.dataset_dir):
         for file in fileList:
             if file.endswith(IMGEND):
@@ -38,38 +42,57 @@ def batch_eval(args):
                 semantic_path = os.path.join(dirName, '{}{}'.format(image_name, SEMEND))
                 embedding_path = os.path.join(args.log_dir, '{}{}'.format(image_name, EMBEND))
                 print 'Image {}'.format(image_name)
-                results_dict = eval_embedding(embedding_path, semantic_path, gt_instance_path, results_dir, image_name)
+                results_dict, pred_path = eval_embedding(embedding_path, semantic_path, gt_instance_path, results_dir, image_name)
                 printResults(results_dict['averages'], eval_args)
+                pred_paths.append(pred_path)
+                gt_paths.append(gt_instance_path)
+
+    # Compute final, dataset wide results
+    results_dict = evaluate_img_lists(pred_paths, gt_paths, results_dir)
+    print 'Final results:'
+    printResults(results_dict['averages'], eval_args)
+    return results_dict
 
 
-def eval_embedding(embedding_path, semantic_path, gt_path, results_dir, image_name, viz=False):
+def eval_embedding(embedding_path, semantic_path, gt_path, results_dir, image_name):
     """
 
     :param embedding_path: Path to predicted pixel embedding file.
-    :param semantic_path: Path to predicted semantic image label file.
-    :param gt_path: Path to ground truth instance labels.
-    :param results_dir: Write rounding results to this directory.
-    :param image_name: Name of this image.
-    :param viz: If true, visualize the instance embeddings and return plot handle.
-    :return results_dict: See cityscapeScripts for definition.
+    :param semantic_path:  Path to predicted semantic image label file.
+    :param gt_path:        Path to ground truth instance labels.
+    :param results_dir:    Write rounding results to this directory.
+    :param image_name:     Name of this image.
+    :param viz:            If true, visualize the instance embeddings and return plot handle.
+    :return results_dict:  See cityscapeScripts for definition.
+    :return img_path:      Path to prediction PNG image.
     """
-    cost_function = partial(lp_cost, p=10)
+    semantic_labels = imageio.imread(semantic_path)
 
+    cost_function = partial(lp_cost, p=10)
     embeddings = np.load(embedding_path)
     h, w, d = embeddings.shape
-    pred_labels = kwik_cluster(np.reshape(embeddings, [-1, d]), cost_function)
-    pred_labels = np.reshape(pred_labels, [h, w])
 
-    semantic_labels = imageio.imread(semantic_path)
-    if pred_labels.shape != semantic_labels.shape:
-        raise ValueError('Prediction and Semantic label shapes {} and {} do not match'.format(pred_labels.shape, semantic_labels.shape))
+    if semantic_labels.shape != (h, w):
+        raise ValueError('Prediction and Semantic label shapes {} and {} do not match'.format((h, w),
+                                                                                              semantic_labels.shape))
+    pred_labels = kwik_cluster(np.reshape(embeddings, [-1, d]), cost_function, blocks=np.reshape(semantic_labels, [-1]))
+    pred_labels = np.reshape(pred_labels, [h, w])
 
     instance_labels, instance_counts = np.unique(pred_labels, return_counts=True)
 
-    results_file_path = os.path.join(results_dir, '{}.txt'.format(image_name))
-    if not os.path.exists(os.path.dirname(results_file_path)):
-        os.makedirs(os.path.dirname(results_file_path))
-    with open(results_file_path, 'wb') as f:
+    # Write color image of predicted instances
+    norm = matplotlib.colors.Normalize(vmin=0, vmax=(len(instance_labels)-1))
+    cmap = matplotlib.cm.plasma
+    colormap = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
+    color_img = colormap.to_rgba(pred_labels)
+    img_path = os.path.join(results_dir, '{}_pred_instances.png'.format(image_name))
+    imageio.imwrite(img_path, color_img)
+
+    # Write individual masks and metafile for processing by cityscapeScripts
+    pred_path = os.path.join(results_dir, '{}.txt'.format(image_name))
+    if not os.path.exists(os.path.dirname(pred_path)):
+        os.makedirs(os.path.dirname(pred_path))
+    with open(pred_path, 'wb') as f:
         for instance_label, instance_count in izip(instance_labels, instance_counts):
             instance_mask = pred_labels == instance_label
 
@@ -87,12 +110,24 @@ def eval_embedding(embedding_path, semantic_path, gt_path, results_dir, image_na
                 # TODO: Better confidence prediction than the size of the cluster
                 f.write('{} {} {}\n'.format(mask_filename, majority_vote_semantic_label, len(semantic_labels_this_instance)))
 
+    results_dict = evaluate_img_lists([pred_path], [gt_path], results_dir)
+    return results_dict, pred_path, img_path
+
+
+def evaluate_img_lists(pred_paths, gt_paths, results_dir):
+    """
+
+    :param pred_paths:    List of paths to prediction txt files.
+    :param gt_paths:      List of paths to ground truth png files.
+    :param results_dir:   Path to results directory.
+    :return results_dict: See cityscapeScripts for definition.
+    """
     eval_args.predictionPath = os.path.abspath(results_dir)
     eval_args.quiet = True
     eval_args.JSONOutput = False
     if os.path.isfile(eval_args.gtInstancesFile):
         os.remove(eval_args.gtInstancesFile)
-    results_dict = evaluateImgLists([results_file_path], [gt_path], eval_args)
+    results_dict = evaluateImgLists(pred_paths, gt_paths, eval_args)
     if os.path.isfile(eval_args.gtInstancesFile):
         os.remove(eval_args.gtInstancesFile)
     return results_dict
@@ -102,7 +137,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument("dataset_dir",
-                        help='Path to directory containing instance and semantic ID PNG files. Files must match pattern'
+                        help='Path to directory containing true instance and (predicted) semantic ID PNG files. '
+                             'Files must match pattern:'
                              '{imagename}_instanceIds.png, e.g. frankfurt_000001_080091_instanceIds.png')
 
     parser.add_argument("log_dir",

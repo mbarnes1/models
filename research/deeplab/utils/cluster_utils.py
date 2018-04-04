@@ -6,11 +6,13 @@ import numpy as np
 import random
 
 
-def kwik_cluster(V, cost_function):
+def kwik_cluster(V, cost_function, blocks=None):
     """
     KwikCluster (Ailon2008) based on cosine similarity
     :param V:               N x D numpy array where N is number of pixels and D is the embedding dimension.
     :param cost_function:   Function that maps vector dot product (cosine similarity) to a cost for creating graph.
+    :param blocks:          N numpy array, specifying the block labels. Only samples within the same block can be
+                            clustered together.
     :return labels:         N numpy vector with predicted labels for each pixel.
     """
     n, d = V.shape
@@ -27,6 +29,11 @@ def kwik_cluster(V, cost_function):
         # If already in a cluster, do not reassign
         labeled_indices_mask = np.not_equal(labels, -1)
         cluster[labeled_indices_mask] = 0
+
+        # If in different block, do not assign
+        if blocks is not None:
+            pivot_block = blocks[pivot_index]
+            cluster[blocks != pivot_block] = 0
 
         labels[cluster] = counter
         counter += 1
