@@ -3,6 +3,7 @@ from deeplab.utils.cluster_utils import kwik_cluster, lp_cost
 from functools import partial
 import imageio
 import numpy as np
+import os
 import unittest
 
 
@@ -39,7 +40,7 @@ class TestEmbeddings(unittest.TestCase):
         semantic_path = 'data/gtFine/val/frankfurt/frankfurt_000000_000294_gtFine_labelIds.png'
         gt_instance_path = 'data/gtFine/val/frankfurt/frankfurt_000000_000294_gtFine_instanceIds.png'
         image_name = 'frankfurt_000000_000294'
-        results_dir = 'data/results/'
+        results_dir = 'data/roundings/'
 
         make_perfect_embedding(gt_instance_path, embedding_path)
 
@@ -49,7 +50,7 @@ class TestEmbeddings(unittest.TestCase):
 
 def make_perfect_embedding(input_file_path, output_file_path):
     """
-
+    Create a perform hot-one embedding using the true instance labels.
     :param input_file_path: Path to PNG file of instance labels
     :param output_file_path: Path to write embedding npy file
     """
@@ -59,4 +60,6 @@ def make_perfect_embedding(input_file_path, output_file_path):
     new_instance_labels = np.copy(instance_labels)
     for k, v in element_map.iteritems(): new_instance_labels[instance_labels == k] = v
     embedding = np.eye(len(unique_labels))[new_instance_labels]
+    if not os.path.exists(os.path.dirname(output_file_path)):
+        os.makedirs(os.path.dirname(output_file_path))
     np.save(output_file_path, embedding)

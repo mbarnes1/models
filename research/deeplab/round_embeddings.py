@@ -67,6 +67,8 @@ def eval_embedding(embedding_path, semantic_path, gt_path, results_dir, image_na
     instance_labels, instance_counts = np.unique(pred_labels, return_counts=True)
 
     results_file_path = os.path.join(results_dir, '{}.txt'.format(image_name))
+    if not os.path.exists(os.path.dirname(results_file_path)):
+        os.makedirs(os.path.dirname(results_file_path))
     with open(results_file_path, 'wb') as f:
         for instance_label, instance_count in izip(instance_labels, instance_counts):
             instance_mask = pred_labels == instance_label

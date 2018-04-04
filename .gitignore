@@ -1,4 +1,6 @@
 # Cityscape script temporary files
+research/deeplab/test/data/roundings/
+research/deeplab/test/data/embeddings/
 *.npy
 *resultInstanceLevelSemanticLabeling.json
 *matches.json
