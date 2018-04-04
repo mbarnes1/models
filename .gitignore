@@ -1,3 +1,8 @@
+# Cityscape script temporary files
+*.npy
+*resultInstanceLevelSemanticLabeling.json
+*matches.json
+
 # OSX Files
 *.DS_Store
 
