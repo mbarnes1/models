@@ -97,9 +97,15 @@ def spectral_loss(
 
                     loss += tf.losses.mean_squared_error(ASCImage, A_predictedSCImage, scope=scope, loss_collection=loss_collection, reduction=reduction)
                 return loss
-            
-            errorsSemantic = tf.map_fn(errorSemanticClass, semanticClass, dtype='float32')
-            loss = tf.reduce_sum(errorsSemantic)
+
+            def totalLoss():
+                lossSemanticClass = tf.map_fn(errorSemanticClass, semanticClass, dtype='float32')
+                return tf.reduce_sum(lossSemanticClass)
+
+            def zeroLoss():
+                return 0.
+
+            loss = tf.cond(tf.size(semanticClass) > 0, totalLoss, zeroLoss)
         else:
             # Compute A
             A = labels_to_adjacency(instance_labels)# batch_size x subsample x subsample
