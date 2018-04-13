@@ -42,7 +42,7 @@ def batch_eval(args):
                 semantic_path = os.path.join(dirName, '{}{}'.format(image_name, SEMEND))
                 embedding_path = os.path.join(args.log_dir, '{}{}'.format(image_name, EMBEND))
                 print 'Image {}'.format(image_name)
-                results_dict, pred_path = eval_embedding(embedding_path, semantic_path, gt_instance_path, results_dir, image_name)
+                results_dict, pred_path, img_path = eval_embedding(embedding_path, semantic_path, gt_instance_path, results_dir, image_name)
                 printResults(results_dict['averages'], eval_args)
                 pred_paths.append(pred_path)
                 gt_paths.append(gt_instance_path)
@@ -62,8 +62,8 @@ def eval_embedding(embedding_path, semantic_path, gt_path, results_dir, image_na
     :param gt_path:        Path to ground truth instance labels.
     :param results_dir:    Write rounding results to this directory.
     :param image_name:     Name of this image.
-    :param viz:            If true, visualize the instance embeddings and return plot handle.
     :return results_dict:  See cityscapeScripts for definition.
+    :return pred_path:     Path to prediction TXT image.
     :return img_path:      Path to prediction PNG image.
     """
     semantic_labels = imageio.imread(semantic_path)
