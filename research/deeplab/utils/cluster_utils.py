@@ -35,10 +35,6 @@ def kwik_cluster(V, cost_function, blocks=None, normalize=True):
         cluster = np.greater(probability, np.random.uniform(size=probability.shape))
         cluster[pivot_index] = True
 
-        print('Pivot probability {}'.format(probability[pivot_index]))
-        print('Pivot embedding')
-        print(V[pivot_index, :])
-
         # If already in a cluster, do not reassign
         labeled_indices_mask = np.not_equal(labels, -1)
         cluster[labeled_indices_mask] = 0
@@ -48,11 +44,11 @@ def kwik_cluster(V, cost_function, blocks=None, normalize=True):
             pivot_block = blocks[pivot_index]
             cluster[blocks != pivot_block] = 0
 
-        print('Found cluster of size {}. Pixels remaining {}'.format(np.sum(cluster), unlabeled_indices.size))
         labels[cluster] = counter
         counter += 1
 
         unlabeled_indices = np.nonzero(np.equal(labels, -1))[0]
+    print('{} clusters'.format(counter))
     return labels
 
 
