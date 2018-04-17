@@ -18,7 +18,8 @@ def spectral_loss(
         loss_collection=ops.GraphKeys.LOSSES,
         reduction=Reduction.SUM_BY_NONZERO_WEIGHTS,
         subsample_power=13,
-        semantic=False):
+        semantic=False,
+        normalize=True):
     """
     Creates a spectral loss. Modified from tf.losses.softmax_cross_entropy.
     :param instance_labels:  `[batch_size, num_pixels]` target instance labels.
@@ -31,8 +32,9 @@ def spectral_loss(
     :param reduction:        Type of reduction to apply to loss.
     :param subsample_power:  Uniformly randomly sample 2**subsample_power many pixels per image when computing the loss.
                              Must be power of 2 to avoid bias in tensorflow random sampling.
-    :semantic:               Computes the loss for each semantic class independently (default : False - Computes for
+    :param semantic:         Computes the loss for each semantic class independently (default : False - Computes for
                              all classes together, implying an error interclasses)
+    :param normalize:        Normalize pixel embeddings to have l2 norm of 1.
     :return loss:            Tensor of the same type as embeddings. If `reduction` is:
                                 `NONE` = shape [batch_size, subsample, subsample]
                                 Else   = Scalar
@@ -56,6 +58,9 @@ def spectral_loss(
         #instance_labels = math_ops.cast(instance_labels, embeddings.dtype)  # keep these as ints
         embeddings.get_shape()[0:2].assert_is_compatible_with(instance_labels.get_shape())
         instance_labels.get_shape().assert_is_compatible_with(instance_mask.get_shape())
+
+        if normalize:
+            embeddings = tf.nn.l2_normalize(embeddings, axis=2)
 
         # Subsample pixels which are not masked (i.e. belong to a semantic class with instances)
         instance_mask = math_ops.cast(instance_mask, dtypes.float32)  # tf.multinomial only accepts float probabilities
