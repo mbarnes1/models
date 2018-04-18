@@ -32,6 +32,7 @@ def spectral_loss(
     :param reduction:             Type of reduction to apply to loss.
     :param subsample_power:       Uniformly randomly sample 2**subsample_power many pixels per image when computing the loss.
                                   Must be power of 2 to avoid bias in tensorflow random sampling.
+                                  If None, do not subsample.
     :param no_semantic_blocking:  If False, compute the loss for each semantic class independently.
     :param normalize:             Normalize pixel embeddings to have l2 norm of 1.
     :return loss:                 Tensor of the same type as embeddings. If `reduction` is:
@@ -42,9 +43,8 @@ def spectral_loss(
                                   or if the shape of `instance_mask` is invalid or if `instance_mask` is None.  Also if
                                   `instance_labels` or `embeddings` is None.
     """
-    assert isinstance(subsample_power, int)
-    assert 0 <= subsample_power <= 16  # tradeoff between memory and variance.
-    subsample = 2**subsample_power
+    assert isinstance(subsample_power, int) or subsample_power is None
+    assert 0 <= subsample_power <= 16 or subsample_power is None  # tradeoff between memory and variance.
     if instance_labels is None:
         raise ValueError("instance_labels must not be None.")
     if embeddings is None:
@@ -52,9 +52,6 @@ def spectral_loss(
     if instance_mask is None:
         raise ValueError("instance_mask must not be None.")  # TODO: Allow None, and set to no mask.
     with ops.name_scope(scope, "spectral_loss", (embeddings, instance_labels, instance_mask)) as scope:
-        #embeddings = ops.convert_to_tensor(embeddings)
-        #instance_labels = ops.convert_to_tensor(instance_labels)
-        #instance_labels = math_ops.cast(instance_labels, embeddings.dtype)  # keep these as ints
         embeddings.get_shape()[0:2].assert_is_compatible_with(instance_labels.get_shape())
         instance_labels.get_shape().assert_is_compatible_with(instance_mask.get_shape())
 
@@ -63,65 +60,31 @@ def spectral_loss(
 
         # Subsample pixels which are not masked (i.e. belong to a semantic class with instances)
         instance_mask = math_ops.cast(instance_mask, dtypes.float32)  # tf.multinomial only accepts float probabilities
-        large_instance_mask = instance_mask*LARGE
-        tf.assert_equal(tf.is_finite(large_instance_mask), True)
-        with tf.device("/cpu:0"):
-            sample_indices = tf.multinomial(large_instance_mask, subsample, output_dtype=tf.int32)  # batch_size x subsample
-        instance_labels = batch_gather(instance_labels, sample_indices)  # batch_size x subsample
-        embeddings = batch_gather(embeddings, sample_indices)  # batch_size x subsample x embedding_dim
+        if subsample_power is not None:
+            subsample = 2 ** subsample_power
+            large_instance_mask = instance_mask*LARGE
+            tf.assert_equal(tf.is_finite(large_instance_mask), True)
+            with tf.device("/cpu:0"):
+                sample_indices = tf.multinomial(large_instance_mask, subsample, output_dtype=tf.int32)  # batch_size x subsample
+            instance_labels = batch_gather(instance_labels, sample_indices)  # batch_size x subsample
+            embeddings = batch_gather(embeddings, sample_indices)  # batch_size x subsample x embedding_dim
 
         if not no_semantic_blocking:
             print("Computing spectral loss within semantic classes.")
-
-            # Compute mask for pixels which belong to same semantic class.
-            batch_size, _ = instance_labels.shape
-
-            # Find the different class
             semantic_labels = tf.cast(tf.floor(tf.divide(instance_labels, 1000)), tf.int32) # See cityscapesscripts/preparation/json2instanceImg.py
-            semanticClass, _ = tf.unique(tf.reshape(semantic_labels, [-1]))
-
-            def errorSemanticClass(sc):
-                """
-                    Computes the error associated to the given semantic class
-                    On the different images of the batch
-                
-                    Arguments:
-                        sc {class} -- Semantic Class
-                """
-                loss = 0.
-                for image in range(batch_size):
-                    # Select semantic pixels
-                    selection = tf.equal(semantic_labels[image], sc)
-                    selection_size = tf.reduce_sum(tf.cast(selection, tf.int32))
-
-                    labelsSC = tf.expand_dims(tf.boolean_mask(instance_labels[image], selection), 0) # 1 x selection
-                    embeddingSC = tf.expand_dims(tf.boolean_mask(embeddings[image], selection, axis = 0), 0) # 1 x selection x embedding_dim
-
-                    # Constructs adjency
-                    ASCImage = labels_to_adjacency(labelsSC, selection_size)
-                    A_predictedSCImage = tf.matmul(embeddingSC, tf.transpose(embeddingSC, [0, 2, 1]))
-
-                    loss += tf.losses.mean_squared_error(ASCImage, A_predictedSCImage, scope=scope, loss_collection=loss_collection, reduction=reduction)
-                return loss
-
-            def totalLoss():
-                lossSemanticClass = tf.map_fn(errorSemanticClass, semanticClass, dtype='float32')
-                return tf.reduce_sum(lossSemanticClass)
-
-            def zeroLoss():
-                return 0.
-
-            loss = tf.cond(tf.size(semanticClass) > 0, totalLoss, zeroLoss)
+            semantic_adjacency = labels_to_adjacency(semantic_labels)
         else:
-            # Compute A
-            A = labels_to_adjacency(instance_labels)# batch_size x subsample x subsample
-            
-            # Compute VV^T
-            A_predicted = tf.matmul(embeddings, tf.transpose(embeddings, [0, 2, 1]))  # batch_size x subsample x subsample
+            semantic_adjacency = 1.0
 
-            # Compute loss
-            # TODO: pass weights, which is semantic adjacency matrix
-            loss = tf.losses.mean_squared_error(A, A_predicted, scope=scope, loss_collection=loss_collection, reduction=reduction)
+        # Compute A
+        A = labels_to_adjacency(instance_labels)  # batch_size x subsample x subsample
+
+        # Compute VV^T
+        A_predicted = tf.matmul(embeddings, tf.transpose(embeddings, [0, 2, 1]))  # batch_size x subsample x subsample
+
+        # Compute loss
+        loss = tf.losses.mean_squared_error(A, A_predicted, scope=scope, loss_collection=loss_collection,
+                                            reduction=reduction, weights=semantic_adjacency)
         
         return loss
 
@@ -156,7 +119,7 @@ def _tile_along_new_axis(params, multiples, axis=-1):
     return tiled_params
 
 
-def labels_to_adjacency(labels, m = None):
+def labels_to_adjacency(labels, m=None):
     """
     Perform all pairwise label comparisons to create a binary adjacency matrix, specifying whether two pixels have the
     same label.
