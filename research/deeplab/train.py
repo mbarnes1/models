@@ -170,6 +170,8 @@ flags.DEFINE_integer('num_threads', 1, 'Number of threads during readings.')
 # Spectral
 flags.DEFINE_boolean('spectral', False, 'Use spectral loss to learn pixel instance embedding.')
 
+flags.DEFINE_boolean('no_semantic_blocking', False, 'Only compute spectral loss within semantic classes.')
+
 
 def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
     """Builds a clone of DeepLab.
@@ -212,6 +214,7 @@ def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
             samples[common.LABEL],
             num_classes,
             ignore_label,
+            FLAGS,
             loss_weight=1.0,
             upsample_logits=FLAGS.upsample_logits,
             scope=output)

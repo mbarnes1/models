@@ -64,14 +64,14 @@ class MyTestCase(tf.test.TestCase):
             labels_tensor = tf.convert_to_tensor(labels)  # 1 x 5
             embeddings = tf.one_hot(labels_tensor, 2001)  # 1 x 5 x 2001
             instance_mask = tf.ones((1, 5))
-            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=8, semantic=True)
+            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=8, no_semantic_blocking=False)
             self.assertAlmostEqual(loss.eval(), 0.)
 
             # 1 additional instance => Error (the category cant be wrong)
             # Error : 0.5
             labels = [[0000, 0000, 1000, 2001, 2000]]
             labels_tensor = tf.convert_to_tensor(labels)  # 1 x 5
-            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=12, semantic=True)
+            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=12, no_semantic_blocking=False)
             self.assertAlmostEqual(loss.eval(), 0.5, places=1)
 
     def test_spectral_loss_semantic_2d(self):
@@ -80,7 +80,7 @@ class MyTestCase(tf.test.TestCase):
             labels_tensor = tf.convert_to_tensor(labels)  # 2 x 5
             embeddings = tf.one_hot(labels_tensor, 2001)  # 2 x 5 x 2001
             instance_mask = tf.ones((2, 5))
-            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=8, semantic=True)
+            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=8, no_semantic_blocking=False)
             self.assertAlmostEqual(loss.eval(), 0.)
 
 if __name__ == '__main__':

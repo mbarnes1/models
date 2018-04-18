@@ -18,30 +18,29 @@ def spectral_loss(
         loss_collection=ops.GraphKeys.LOSSES,
         reduction=Reduction.SUM_BY_NONZERO_WEIGHTS,
         subsample_power=13,
-        semantic=False,
+        no_semantic_blocking=False,
         normalize=True):
     """
     Creates a spectral loss. Modified from tf.losses.softmax_cross_entropy.
-    :param instance_labels:  `[batch_size, num_pixels]` target instance labels.
-    :param embeddings:       `[batch_size, num_pixels, embedding_dim]` pixel embedding output of the network.
-    :param instance_mask:    '[batch_size, num_pixels]' binary Tensor.
-                                1 = Semantic class of pixel has instances, learn pixel embedding.
-                                0 = Semantic class of pixel does not have instances, so do not learn embedding.
-    :param scope:            The scope for the operations performed in computing the loss.
-    :param loss_collection:  Collection to which the loss will be added.
-    :param reduction:        Type of reduction to apply to loss.
-    :param subsample_power:  Uniformly randomly sample 2**subsample_power many pixels per image when computing the loss.
-                             Must be power of 2 to avoid bias in tensorflow random sampling.
-    :param semantic:         Computes the loss for each semantic class independently (default : False - Computes for
-                             all classes together, implying an error interclasses)
-    :param normalize:        Normalize pixel embeddings to have l2 norm of 1.
-    :return loss:            Tensor of the same type as embeddings. If `reduction` is:
-                                `NONE` = shape [batch_size, subsample, subsample]
-                                Else   = Scalar
+    :param instance_labels:       `[batch_size, num_pixels]` target instance labels, int32 tensor.
+    :param embeddings:            `[batch_size, num_pixels, embedding_dim]` pixel embedding output of network, float tensor.
+    :param instance_mask:         '[batch_size, num_pixels]' binary Tensor.
+                                      1 = Semantic class of pixel has instances, learn pixel embedding.
+                                      0 = Semantic class of pixel does not have instances, so do not learn embedding.
+    :param scope:                 The scope for the operations performed in computing the loss.
+    :param loss_collection:       Collection to which the loss will be added.
+    :param reduction:             Type of reduction to apply to loss.
+    :param subsample_power:       Uniformly randomly sample 2**subsample_power many pixels per image when computing the loss.
+                                  Must be power of 2 to avoid bias in tensorflow random sampling.
+    :param no_semantic_blocking:  If False, compute the loss for each semantic class independently.
+    :param normalize:             Normalize pixel embeddings to have l2 norm of 1.
+    :return loss:                 Tensor of the same type as embeddings. If `reduction` is:
+                                      `NONE` = shape [batch_size, subsample, subsample]
+                                      Else   = Scalar
     Raises:
-        ValueError:          If batch_size and num_pixels of `embeddings` and `instance_labels` do not match
-                             or if the shape of `instance_mask` is invalid or if `instance_mask` is None.  Also if
-                             `instance_labels` or `embeddings` is None.
+        ValueError:               If batch_size and num_pixels of `embeddings` and `instance_labels` do not match
+                                  or if the shape of `instance_mask` is invalid or if `instance_mask` is None.  Also if
+                                  `instance_labels` or `embeddings` is None.
     """
     assert isinstance(subsample_power, int)
     assert 0 <= subsample_power <= 16  # tradeoff between memory and variance.
@@ -71,12 +70,14 @@ def spectral_loss(
         instance_labels = batch_gather(instance_labels, sample_indices)  # batch_size x subsample
         embeddings = batch_gather(embeddings, sample_indices)  # batch_size x subsample x embedding_dim
 
-        if semantic:
+        if not no_semantic_blocking:
+            print("Computing spectral loss within semantic classes.")
+
             # Compute mask for pixels which belong to same semantic class.
             batch_size, _ = instance_labels.shape
 
             # Find the different class
-            semantic_labels = tf.cast(tf.floor(instance_labels / 1000), tf.int32) # See cityscapesscripts/preparation/json2instanceImg.py
+            semantic_labels = tf.cast(tf.floor(tf.divide(instance_labels, 1000)), tf.int32) # See cityscapesscripts/preparation/json2instanceImg.py
             semanticClass, _ = tf.unique(tf.reshape(semantic_labels, [-1]))
 
             def errorSemanticClass(sc):

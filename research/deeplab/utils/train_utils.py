@@ -24,6 +24,7 @@ def add_spectral_loss_for_each_scale(scales_to_logits,
                                      labels,
                                      embedding_dim,
                                      ignore_label,
+                                     flags,
                                      loss_weight=1.0,
                                      upsample_logits=True,
                                      scope=None):
@@ -35,6 +36,7 @@ def add_spectral_loss_for_each_scale(scales_to_logits,
     :param labels:            Groundtruth instance labels with shape [batch, image_height, image_width, 1].
     :param embedding_dim:     Integer, the pixel embedding dimension.
     :param ignore_label:      Integer, label to ignore.
+    :param flags:             tf.app.flags.FLAGS object
     :param loss_weight:       Float, loss weight.
     :param upsample_logits:   Boolean, upsample logits or not.
     :param scope:             String, the scope for the loss.
@@ -63,13 +65,15 @@ def add_spectral_loss_for_each_scale(scales_to_logits,
         not_ignore_mask = tf.reshape(not_ignore_mask, shape=[batch_size, -1])  # batch x npixels
         scaled_labels = tf.reshape(scaled_labels, shape=[batch_size, -1])  # batch x npixels
         logits = tf.reshape(logits, shape=[batch_size, -1, embedding_dim])  # batch x npixels x embedding dim
-        spectral_loss(scaled_labels, logits, not_ignore_mask, scope=loss_scope)
+        spectral_loss(scaled_labels, logits, not_ignore_mask, scope=loss_scope,
+                      no_semantic_blocking=flags.no_semantic_blocking)
 
 
 def add_softmax_cross_entropy_loss_for_each_scale(scales_to_logits,
                                                   labels,
                                                   num_classes,
                                                   ignore_label,
+                                                  flags,
                                                   loss_weight=1.0,
                                                   upsample_logits=True,
                                                   scope=None):
@@ -82,6 +86,7 @@ def add_softmax_cross_entropy_loss_for_each_scale(scales_to_logits,
     num_classes: Integer, number of target classes.
     ignore_label: Integer, label to ignore.
     loss_weight: Float, loss weight.
+    flags: tf.app.flags.FLAGS object
     upsample_logits: Boolean, upsample logits or not.
     scope: String, the scope for the loss.
 
