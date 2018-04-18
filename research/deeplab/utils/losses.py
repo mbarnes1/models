@@ -17,7 +17,7 @@ def spectral_loss(
         scope=None,
         loss_collection=ops.GraphKeys.LOSSES,
         reduction=Reduction.SUM_BY_NONZERO_WEIGHTS,
-        subsample_power=13,
+        subsample_power=12,
         no_semantic_blocking=False,
         normalize=True):
     """
