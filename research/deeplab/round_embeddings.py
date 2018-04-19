@@ -37,9 +37,9 @@ def batch_eval(args):
     for dir_name, _, fileList in os.walk(args.dataset_dir):
         for file_name in fileList:
             if file_name.endswith(IMGEND):
-                input_list.append((dir_name, file_name, results_dir))
+                input_list.append((dir_name, file_name, results_dir, args.log_dir, args.individual))
     print('Found {} ground truth images.'.format(len(input_list)))
-    input_list = input_list[0:min(len(input_list), args.num_images)]
+    input_list = input_list[0:min(len(input_list), args.max_images)]
 
     if args.num_processes > 1:
         p = Pool(args.num_processes)
@@ -61,15 +61,15 @@ def batch_eval(args):
 
 
 def single_eval(args):
-    dir_name, file_name, results_dir = args
+    dir_name, file_name, results_dir, log_dir, individual = args
 
     image_name = file_name.rstrip(IMGEND)
     print('Rounding embeddings for image {}'.format(image_name))
     semantic_path = os.path.join(dir_name, '{}{}'.format(image_name, SEMEND))
-    embedding_path = os.path.join(args.log_dir, '{}{}'.format(image_name, EMBEND))
+    embedding_path = os.path.join(log_dir, '{}{}'.format(image_name, EMBEND))
     gt_instance_path = os.path.join(dir_name, file_name)
     pred_path, img_path = round_embedding(embedding_path, semantic_path, results_dir, image_name)
-    if args.individual:
+    if individual:
         results_dict = evaluate_img_lists([pred_path], [gt_instance_path], results_dir)
         printResults(results_dict['averages'], eval_args)
     return pred_path
