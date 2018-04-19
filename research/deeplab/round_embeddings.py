@@ -34,18 +34,26 @@ def batch_eval(args):
     pred_paths = []
     gt_paths = []
 
-    for dirName, _, fileList in os.walk(args.dataset_dir):
+    print('Gathering all predictions...')
+    image_list = []
+    for dir_name, _, fileList in os.walk(args.dataset_dir):
         for file in fileList:
             if file.endswith(IMGEND):
-                gt_instance_path = os.path.join(dirName, file)
+                gt_instance_path = os.path.join(dir_name, file)
                 image_name = file.rstrip(IMGEND)
-                semantic_path = os.path.join(dirName, '{}{}'.format(image_name, SEMEND))
-                embedding_path = os.path.join(args.log_dir, '{}{}'.format(image_name, EMBEND))
-                print 'Image {}'.format(image_name)
-                results_dict, pred_path, img_path = eval_embedding(embedding_path, semantic_path, gt_instance_path, results_dir, image_name)
-                printResults(results_dict['averages'], eval_args)
-                pred_paths.append(pred_path)
-                gt_paths.append(gt_instance_path)
+                image_list.append((dir_name, image_name))
+    print('Found {} ground truth images.'.format(len(image_list)))
+
+    for counter, (dir_name, image_name) in enumerate(image_list):
+        print('Evaluating image {} of {}: {}'.format(counter, min(len(image_list), args.max_images), image_name))
+        semantic_path = os.path.join(dir_name, '{}{}'.format(image_name, SEMEND))
+        embedding_path = os.path.join(args.log_dir, '{}{}'.format(image_name, EMBEND))
+        print 'Image {}'.format(image_name)
+        results_dict, pred_path, img_path = eval_embedding(embedding_path, semantic_path, gt_instance_path, results_dir,
+                                                           image_name)
+        printResults(results_dict['averages'], eval_args)
+        pred_paths.append(pred_path)
+        gt_paths.append(gt_instance_path)
 
     # Compute final, dataset wide results
     results_dict = evaluate_img_lists(pred_paths, gt_paths, results_dir)
@@ -144,6 +152,9 @@ if __name__ == '__main__':
     parser.add_argument("log_dir",
                         help='Path to directory containing pixel embedding files. '
                              'Files must match pattern {imagename}.npy')
+
+    parser.add_argument("--max_images", default=np.Inf, type=int,
+                        help='Evaluate at most this many images')
 
     args = parser.parse_args()
 
