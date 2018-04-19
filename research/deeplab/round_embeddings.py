@@ -35,22 +35,21 @@ def batch_eval(args):
     gt_paths = []
 
     print('Gathering all predictions...')
-    image_list = []
+    file_list = []
     for dir_name, _, fileList in os.walk(args.dataset_dir):
-        for file in fileList:
-            if file.endswith(IMGEND):
-                gt_instance_path = os.path.join(dir_name, file)
-                image_name = file.rstrip(IMGEND)
-                image_list.append((dir_name, image_name))
-    print('Found {} ground truth images.'.format(len(image_list)))
+        for file_name in fileList:
+            if file_name.endswith(IMGEND):
+                file_list.append((dir_name, file_name))
+    print('Found {} ground truth images.'.format(len(file_list)))
 
-    for counter, (dir_name, image_name) in enumerate(image_list):
+    for counter, (dir_name, file_name) in enumerate(file_list):
         if counter >= args.max_images:
             break
-        print('Evaluating image {} of {}: {}'.format(counter, min(len(image_list), args.max_images), image_name))
+        image_name = file_name.rstrip(IMGEND)
+        print('Rounding embeddings for image {} of {}: {}'.format(counter + 1, min(len(file_list), args.max_images), image_name))
         semantic_path = os.path.join(dir_name, '{}{}'.format(image_name, SEMEND))
         embedding_path = os.path.join(args.log_dir, '{}{}'.format(image_name, EMBEND))
-
+        gt_instance_path = os.path.join(dir_name, file_name)
         pred_path, img_path = round_embedding(embedding_path, semantic_path, results_dir, image_name)
         if args.individual:
             results_dict = evaluate_img_lists([pred_path], [gt_instance_path], results_dir)

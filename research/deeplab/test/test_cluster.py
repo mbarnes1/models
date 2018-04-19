@@ -1,4 +1,4 @@
-from deeplab.round_embeddings import eval_embedding
+from deeplab.round_embeddings import evaluate_img_lists, round_embedding
 from deeplab.utils.cluster_utils import kwik_cluster, lp_cost
 from functools import partial
 import imageio
@@ -44,7 +44,8 @@ class TestEmbeddings(unittest.TestCase):
 
         make_perfect_embedding(gt_instance_path, embedding_path)
 
-        results_dict, _, color_img = eval_embedding(embedding_path, semantic_path, gt_instance_path, results_dir, image_name)
+        pred_path, _ = round_embedding(embedding_path, semantic_path, results_dir, image_name)
+        results_dict = evaluate_img_lists([pred_path], [gt_instance_path], results_dir)
         self.assertEqual(results_dict['averages']['allAp'], 1.0)
 
 
