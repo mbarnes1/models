@@ -48,7 +48,6 @@ def kwik_cluster(V, cost_function, blocks=None, normalize=True):
         counter += 1
 
         unlabeled_indices = np.nonzero(np.equal(labels, -1))[0]
-    print('{} clusters'.format(counter))
     return labels
 
 

@@ -47,7 +47,6 @@ def batch_eval(args):
         for i, output in enumerate(p.imap_unordered(single_eval, input_list), 1):
             print('done {0:%}'.format(i / len(input_list)))
             outputs.append(output)
-            print output
     else:
         outputs = map(single_eval, input_list)
 
@@ -57,8 +56,6 @@ def batch_eval(args):
         pred_paths.append(output[0])
         gt_paths.append(output[1])
 
-    print pred_paths
-    print gt_paths
     # Compute final, dataset wide results
     results_dict = evaluate_img_lists(pred_paths, gt_paths, results_dir)
     print 'Final results:'
@@ -78,7 +75,7 @@ def single_eval(args):
         results_dict = evaluate_img_lists([pred_path], [gt_instance_path], results_dir)
         print('Rounding results for image {}'.format(image_name))
         printResults(results_dict['averages'], eval_args)
-    return pred_path
+    return pred_path, gt_instance_path
 
 
 def round_embedding(embedding_path, semantic_path, results_dir, image_name):
@@ -111,7 +108,7 @@ def round_embedding(embedding_path, semantic_path, results_dir, image_name):
     colormap = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
     color_img = colormap.to_rgba(pred_labels)
     img_path = os.path.join(results_dir, '{}_pred_instances.png'.format(image_name))
-    imageio.imwrite(img_path, color_img)
+    imageio.imwrite(img_path, color_img.astype('uint8'))
 
     # Write individual masks and metafile for processing by cityscapeScripts
     pred_path = os.path.join(results_dir, '{}.txt'.format(image_name))
