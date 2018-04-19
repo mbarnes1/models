@@ -3,6 +3,7 @@
 Round precomputed pixel instance embeddings and evaluate performance.
 """
 
+from __future__ import division
 import argparse
 from datasets.cityscapesScripts.cityscapesscripts.evaluation.evalInstanceLevelSemanticLabeling import args as eval_args
 from datasets.cityscapesScripts.cityscapesscripts.evaluation.evalInstanceLevelSemanticLabeling import evaluateImgLists, printResults
@@ -45,7 +46,7 @@ def batch_eval(args):
         p = Pool(args.num_processes)
         outputs = []
         for i, output in enumerate(p.imap_unordered(single_eval, input_list), 1):
-            print('done {0:%}'.format(i / len(input_list)))
+            print('done {:4.2f}%'.format(i / len(input_list)))
             outputs.append(output)
     else:
         outputs = map(single_eval, input_list)
