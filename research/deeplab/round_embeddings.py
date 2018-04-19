@@ -45,13 +45,15 @@ def batch_eval(args):
     print('Found {} ground truth images.'.format(len(image_list)))
 
     for counter, (dir_name, image_name) in enumerate(image_list):
+        if counter >= args.max_images:
+            break
         print('Evaluating image {} of {}: {}'.format(counter, min(len(image_list), args.max_images), image_name))
         semantic_path = os.path.join(dir_name, '{}{}'.format(image_name, SEMEND))
         embedding_path = os.path.join(args.log_dir, '{}{}'.format(image_name, EMBEND))
-        print 'Image {}'.format(image_name)
+
+        pred_path, img_path = round_embedding(embedding_path, semantic_path, results_dir, image_name)
         if args.individual:
-            results_dict, pred_path, img_path = eval_embedding(embedding_path, semantic_path, gt_instance_path, results_dir,
-                                                               image_name)
+            results_dict = evaluate_img_lists([pred_path], [gt_instance_path], results_dir)
             printResults(results_dict['averages'], eval_args)
         pred_paths.append(pred_path)
         gt_paths.append(gt_instance_path)
@@ -63,15 +65,13 @@ def batch_eval(args):
     return results_dict
 
 
-def eval_embedding(embedding_path, semantic_path, gt_path, results_dir, image_name):
+def round_embedding(embedding_path, semantic_path, results_dir, image_name):
     """
 
     :param embedding_path: Path to predicted pixel embedding file.
     :param semantic_path:  Path to predicted semantic image label file.
-    :param gt_path:        Path to ground truth instance labels.
     :param results_dir:    Write rounding results to this directory.
     :param image_name:     Name of this image.
-    :return results_dict:  See cityscapeScripts for definition.
     :return pred_path:     Path to prediction TXT image.
     :return img_path:      Path to prediction PNG image.
     """
@@ -119,8 +119,7 @@ def eval_embedding(embedding_path, semantic_path, gt_path, results_dir, image_na
                 # TODO: Better confidence prediction than the size of the cluster
                 f.write('{} {} {}\n'.format(mask_filename, majority_vote_semantic_label, len(semantic_labels_this_instance)))
 
-    results_dict = evaluate_img_lists([pred_path], [gt_path], results_dir)
-    return results_dict, pred_path, img_path
+    return pred_path, img_path
 
 
 def evaluate_img_lists(pred_paths, gt_paths, results_dir):
