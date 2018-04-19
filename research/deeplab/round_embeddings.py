@@ -49,9 +49,10 @@ def batch_eval(args):
         semantic_path = os.path.join(dir_name, '{}{}'.format(image_name, SEMEND))
         embedding_path = os.path.join(args.log_dir, '{}{}'.format(image_name, EMBEND))
         print 'Image {}'.format(image_name)
-        results_dict, pred_path, img_path = eval_embedding(embedding_path, semantic_path, gt_instance_path, results_dir,
-                                                           image_name)
-        printResults(results_dict['averages'], eval_args)
+        if args.individual:
+            results_dict, pred_path, img_path = eval_embedding(embedding_path, semantic_path, gt_instance_path, results_dir,
+                                                               image_name)
+            printResults(results_dict['averages'], eval_args)
         pred_paths.append(pred_path)
         gt_paths.append(gt_instance_path)
 
@@ -156,6 +157,8 @@ if __name__ == '__main__':
     parser.add_argument("--max_images", default=np.Inf, type=int,
                         help='Evaluate at most this many images')
 
+    parser.add_argument("--individual", default=False, action='store_true',
+                        help="Individually evaluate each image in addition to aggregate evaluation.")
     args = parser.parse_args()
 
     batch_eval(args)
