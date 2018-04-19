@@ -11,6 +11,7 @@ import imageio
 from itertools import izip
 import matplotlib.cm
 import matplotlib.colors
+from multiprocessing import Pool
 import numpy as np
 import os
 from utils.cluster_utils import kwik_cluster, lp_cost
@@ -31,37 +32,47 @@ def batch_eval(args):
     if not os.path.exists(results_dir):
         os.mkdir(results_dir)
 
-    pred_paths = []
-    gt_paths = []
-
     print('Gathering all predictions...')
-    file_list = []
+    input_list = []
     for dir_name, _, fileList in os.walk(args.dataset_dir):
         for file_name in fileList:
             if file_name.endswith(IMGEND):
-                file_list.append((dir_name, file_name))
-    print('Found {} ground truth images.'.format(len(file_list)))
+                input_list.append((dir_name, file_name, results_dir))
+    print('Found {} ground truth images.'.format(len(input_list)))
+    input_list = input_list[0:min(len(input_list), args.num_images)]
 
-    for counter, (dir_name, file_name) in enumerate(file_list):
-        if counter >= args.max_images:
-            break
-        image_name = file_name.rstrip(IMGEND)
-        print('Rounding embeddings for image {} of {}: {}'.format(counter + 1, min(len(file_list), args.max_images), image_name))
-        semantic_path = os.path.join(dir_name, '{}{}'.format(image_name, SEMEND))
-        embedding_path = os.path.join(args.log_dir, '{}{}'.format(image_name, EMBEND))
-        gt_instance_path = os.path.join(dir_name, file_name)
-        pred_path, img_path = round_embedding(embedding_path, semantic_path, results_dir, image_name)
-        if args.individual:
-            results_dict = evaluate_img_lists([pred_path], [gt_instance_path], results_dir)
-            printResults(results_dict['averages'], eval_args)
-        pred_paths.append(pred_path)
-        gt_paths.append(gt_instance_path)
+    if args.num_processes > 1:
+        p = Pool(args.num_processes)
+        outputs = p.imap_unordered(single_eval, input_list)
+    else:
+        outputs = map(single_eval, input_list)
+
+    pred_paths = []
+    gt_paths = []
+    for output in outputs:
+        pred_paths.append(output[0])
+        gt_paths.append(output[1])
 
     # Compute final, dataset wide results
     results_dict = evaluate_img_lists(pred_paths, gt_paths, results_dir)
     print 'Final results:'
     printResults(results_dict['averages'], eval_args)
     return results_dict
+
+
+def single_eval(args):
+    dir_name, file_name, results_dir = args
+
+    image_name = file_name.rstrip(IMGEND)
+    print('Rounding embeddings for image {}'.format(image_name))
+    semantic_path = os.path.join(dir_name, '{}{}'.format(image_name, SEMEND))
+    embedding_path = os.path.join(args.log_dir, '{}{}'.format(image_name, EMBEND))
+    gt_instance_path = os.path.join(dir_name, file_name)
+    pred_path, img_path = round_embedding(embedding_path, semantic_path, results_dir, image_name)
+    if args.individual:
+        results_dict = evaluate_img_lists([pred_path], [gt_instance_path], results_dir)
+        printResults(results_dict['averages'], eval_args)
+    return pred_path
 
 
 def round_embedding(embedding_path, semantic_path, results_dir, image_name):
@@ -157,6 +168,10 @@ if __name__ == '__main__':
 
     parser.add_argument("--individual", default=False, action='store_true',
                         help="Individually evaluate each image in addition to aggregate evaluation.")
+
+    parser.add_argument("--num_processes", default=1, type=int,
+                        help="Number of parallel processes.")
+
     args = parser.parse_args()
 
     batch_eval(args)
