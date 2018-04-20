@@ -38,7 +38,7 @@ def batch_eval(args):
     for dir_name, _, fileList in os.walk(args.dataset_dir):
         for file_name in fileList:
             if file_name.endswith(IMGEND):
-                input_list.append((dir_name, file_name, results_dir, args.log_dir, args.individual))
+                input_list.append((dir_name, file_name, results_dir, args.log_dir))
     print('Found {} ground truth images.'.format(len(input_list)))
     input_list = input_list[0:min(len(input_list), args.max_images)]
 
@@ -53,30 +53,35 @@ def batch_eval(args):
 
     pred_paths = []
     gt_paths = []
+    num_instances = 0
     for output in outputs:
         pred_paths.append(output[0])
         gt_paths.append(output[1])
+        num_instances += output[2]
+    num_instances /= len(outputs)
 
     # Compute final, dataset wide results
     results_dict = evaluate_img_lists(pred_paths, gt_paths, results_dir)
     print 'Final results:'
     printResults(results_dict['averages'], eval_args)
+    print 'Average number of instances per image {}'.format(num_instances)
     return results_dict
 
 
 def single_eval(args):
-    dir_name, file_name, results_dir, log_dir, individual = args
+    dir_name, file_name, results_dir, log_dir = args
 
     image_name = file_name.rstrip(IMGEND)
     semantic_path = os.path.join(dir_name, '{}{}'.format(image_name, SEMEND))
     embedding_path = os.path.join(log_dir, '{}{}'.format(image_name, EMBEND))
     gt_instance_path = os.path.join(dir_name, file_name)
-    pred_path, img_path = round_embedding(embedding_path, semantic_path, results_dir, image_name)
-    if individual:
-        results_dict = evaluate_img_lists([pred_path], [gt_instance_path], results_dir)
-        print('Rounding results for image {}'.format(image_name))
-        printResults(results_dict['averages'], eval_args)
-    return pred_path, gt_instance_path
+    pred_path, img_path, num_instances = round_embedding(embedding_path, semantic_path, results_dir, image_name)
+
+    # Individual results
+    #results_dict = evaluate_img_lists([pred_path], [gt_instance_path], results_dir)
+    #print('Rounding results for image {}'.format(image_name))
+    #printResults(results_dict['averages'], eval_args)
+    return pred_path, gt_instance_path, num_instances
 
 
 def round_embedding(embedding_path, semantic_path, results_dir, image_name):
@@ -105,7 +110,7 @@ def round_embedding(embedding_path, semantic_path, results_dir, image_name):
 
     # Write color image of predicted instances
     norm = matplotlib.colors.Normalize(vmin=0, vmax=(len(instance_labels)-1))
-    cmap = matplotlib.cm.plasma
+    cmap = matplotlib.cm.jet
     colormap = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
     color_img = colormap.to_rgba(pred_labels)
     img_path = os.path.join(results_dir, '{}_pred_instances.png'.format(image_name))
@@ -133,7 +138,8 @@ def round_embedding(embedding_path, semantic_path, results_dir, image_name):
                 # TODO: Better confidence prediction than the size of the cluster
                 f.write('{} {} {}\n'.format(mask_filename, majority_vote_semantic_label, len(semantic_labels_this_instance)))
 
-    return pred_path, img_path
+    num_instances = len(instance_labels)
+    return pred_path, img_path, num_instances
 
 
 def evaluate_img_lists(pred_paths, gt_paths, results_dir):
@@ -169,9 +175,6 @@ if __name__ == '__main__':
 
     parser.add_argument("--max_images", default=np.Inf, type=int,
                         help='Evaluate at most this many images')
-
-    parser.add_argument("--individual", default=False, action='store_true',
-                        help="Individually evaluate each image in addition to aggregate evaluation.")
 
     parser.add_argument("--num_processes", default=1, type=int,
                         help="Number of parallel processes.")
