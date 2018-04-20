@@ -5,6 +5,7 @@ Round precomputed pixel instance embeddings and evaluate performance.
 
 from __future__ import division
 import argparse
+from datasets.cityscapesScripts.cityscapesscripts.helpers.labels import id2hasinstances
 from datasets.cityscapesScripts.cityscapesscripts.evaluation.evalInstanceLevelSemanticLabeling import args as eval_args
 from datasets.cityscapesScripts.cityscapesscripts.evaluation.evalInstanceLevelSemanticLabeling import evaluateImgLists, printResults
 from functools import partial
@@ -126,7 +127,7 @@ def round_embedding(embedding_path, semantic_path, results_dir, image_name):
             unique_semantic_labels, semantic_counts = np.unique(semantic_labels_this_instance, return_counts=True)
             ind = np.argmax(semantic_counts)
             majority_vote_semantic_label = unique_semantic_labels[ind]
-            if majority_vote_semantic_label != IGNORELABEL:
+            if majority_vote_semantic_label != IGNORELABEL and id2hasinstances[majority_vote_semantic_label]:
                 # Write mask file
                 mask_filename = "{}_{}.png".format(image_name, instance_label)
                 # Write mask to file. Set mask value to 255 so visualization is black & white.
