@@ -14,12 +14,12 @@ def kwik_cluster(V, cost_function, blocks=None, normalize=True):
     :param blocks:          N numpy array, specifying the block labels. Only samples within the same block can be
                             clustered together.
     :param normalize:       Normalize pixel embeddings to have norm 1.
-    :return labels:         N numpy vector with predicted labels for each pixel.
+    :return labels:         N numpy vector with predicted labels for each pixel. First label begins at 1.
     """
     n, d = V.shape
     labels = -1*np.ones(n)
     unlabeled_indices = np.array(xrange(0, n))
-    counter = 0
+    counter = 1
 
     if normalize:
         l2_norms = np.linalg.norm(V, axis=1)

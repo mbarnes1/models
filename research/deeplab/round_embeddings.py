@@ -46,7 +46,7 @@ def batch_eval(args):
         p = Pool(args.num_processes)
         outputs = []
         for i, output in enumerate(p.imap_unordered(single_eval, input_list), 1):
-            print('done {:4.2f}%'.format(i / len(input_list)))
+            print('done {:4.2f}%'.format(100*i / len(input_list)))
             outputs.append(output)
     else:
         outputs = map(single_eval, input_list)
@@ -109,17 +109,14 @@ def round_embedding(embedding_path, semantic_path, results_dir, image_name):
     instance_labels, instance_counts = np.unique(pred_labels, return_counts=True)
 
     # Write color image of predicted instances
-    norm = matplotlib.colors.Normalize(vmin=0, vmax=(len(instance_labels)-1))
-    cmap = matplotlib.cm.jet
-    colormap = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
-    color_img = colormap.to_rgba(pred_labels)
     img_path = os.path.join(results_dir, '{}_pred_instances.png'.format(image_name))
-    imageio.imwrite(img_path, color_img.astype('uint8'))
+    write_color_img(pred_labels, img_path)
 
     # Write individual masks and metafile for processing by cityscapeScripts
     pred_path = os.path.join(results_dir, '{}.txt'.format(image_name))
     if not os.path.exists(os.path.dirname(pred_path)):
         os.makedirs(os.path.dirname(pred_path))
+    instances_per_semantic = {}
     with open(pred_path, 'wb') as f:
         for instance_label, instance_count in izip(instance_labels, instance_counts):
             instance_mask = pred_labels == instance_label
@@ -134,12 +131,37 @@ def round_embedding(embedding_path, semantic_path, results_dir, image_name):
                 mask_filename = "{}_{}.png".format(image_name, instance_label)
                 # Write mask to file. Set mask value to 255 so visualization is black & white.
                 imageio.imwrite(os.path.join(results_dir, mask_filename), 255*instance_mask.astype('uint8'))
-
                 # TODO: Better confidence prediction than the size of the cluster
                 f.write('{} {} {}\n'.format(mask_filename, majority_vote_semantic_label, len(semantic_labels_this_instance)))
 
+                if majority_vote_semantic_label not in instances_per_semantic:
+                    instances_per_semantic[majority_vote_semantic_label] = instance_label * instance_mask.astype('uint8')
+                else:
+                    instances_per_semantic[majority_vote_semantic_label] += instance_label * instance_mask.astype('uint8')
+    for semantic_label, instance_labels in instances_per_semantic.iteritems():
+        output_path = os.path.join(results_dir, '{}_semantic_{}.png'.format(image_name, semantic_label))
+        write_color_img(instance_labels, output_path)
     num_instances = len(instance_labels)
     return pred_path, img_path, num_instances
+
+
+def write_color_img(labels, path):
+    """
+    Shuffle labels and write to a color image. Always keep label 0 as black.
+    :param labels: h x w numpy array
+    :param path: Path to write image to
+    """
+    instance_labels = np.unique(labels)
+    shuffle_map = np.random.permutation(len(instance_labels))
+    shuffle_map = {old_label: new_label for old_label, new_label in izip(instance_labels, shuffle_map)}
+    shuffled_labels = np.vectorize(shuffle_map.get)(labels)
+    norm = matplotlib.colors.Normalize(vmin=0, vmax=(len(instance_labels) - 1))
+    cmap = matplotlib.cm.jet
+    colormap = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
+    color_img = colormap.to_rgba(shuffled_labels)
+    color_img = (color_img*255).astype('uint8')
+    color_img[labels == 0, :] = [0, 0, 0, 255]  # set label 0 to black
+    imageio.imwrite(path, color_img)
 
 
 def evaluate_img_lists(pred_paths, gt_paths, results_dir):

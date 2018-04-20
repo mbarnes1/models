@@ -44,7 +44,7 @@ class TestEmbeddings(unittest.TestCase):
 
         make_perfect_embedding(gt_instance_path, embedding_path)
 
-        pred_path, _ = round_embedding(embedding_path, semantic_path, results_dir, image_name)
+        pred_path, _, _ = round_embedding(embedding_path, semantic_path, results_dir, image_name)
         results_dict = evaluate_img_lists([pred_path], [gt_instance_path], results_dir)
         self.assertEqual(results_dict['averages']['allAp'], 1.0)
 
