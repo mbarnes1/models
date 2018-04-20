@@ -146,11 +146,11 @@ def round_embedding(embedding_path, semantic_path, results_dir, image_name):
     return pred_path, img_path, num_instances
 
 
-def write_color_img(labels, path):
+def get_color_img(labels):
     """
-    Shuffle labels and write to a color image. Always keep label 0 as black.
+    Shuffle labels and create a color image array. Always keep label 0 as black.
     :param labels: h x w numpy array
-    :param path: Path to write image to
+    :return color_img: h x w x 4 rgba numpy array, dtype=uint8
     """
     instance_labels = np.unique(labels)
     shuffle_map = np.random.permutation(len(instance_labels))
@@ -160,8 +160,18 @@ def write_color_img(labels, path):
     cmap = matplotlib.cm.jet
     colormap = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
     color_img = colormap.to_rgba(shuffled_labels)
-    color_img = (color_img*255).astype('uint8')
+    color_img = (color_img * 255).astype('uint8')
     color_img[labels == 0, :] = [0, 0, 0, 255]  # set label 0 to black
+    return color_img
+
+
+def write_color_img(labels, path):
+    """
+    Shuffle labels and write to a color image. Always keep label 0 as black.
+    :param labels: h x w numpy array
+    :param path: Path to write image to
+    """
+    color_img = get_color_img(labels)
     imageio.imwrite(path, color_img)
 
 
