@@ -1,3 +1,4 @@
+from __future__ import division
 from deeplab.utils.losses import batch_gather, _tile_along_new_axis, labels_to_adjacency, spectral_loss
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
@@ -48,23 +49,24 @@ class MyTestCase(tf.test.TestCase):
             labels_tensor = tf.convert_to_tensor(labels)  # 1 x 5
             embeddings = tf.one_hot(labels_tensor, 3)  # 1 x 5 x 3
             instance_mask = tf.ones((1, 5))
-            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=8)
+            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=8, rebalance_classes=False)
             self.assertAlmostEqual(loss.eval(), 0.)
 
             # Induce 1 FP and 1 FN by flipping one label
             # 2*2/5^2 = 0.16
             labels = [[0, 0, 1, 2, 1]]
             labels_tensor = tf.convert_to_tensor(labels)  # 1 x 5
-            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=12)
+            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=12, rebalance_classes=False)
             self.assertAlmostEqual(loss.eval(), 0.16, places=1)
 
     def test_spectral_loss_semantic(self):
         with self.test_session():
             labels = [[0000, 0000, 1000, 2000, 2000]]
             labels_tensor = tf.convert_to_tensor(labels)  # 1 x 5
-            embeddings = tf.one_hot(labels_tensor, 2001)  # 1 x 5 x 2001
+            embeddings = tf.one_hot(labels_tensor, 2002)  # 1 x 5 x 2001
             instance_mask = tf.ones((1, 5))
-            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=None, no_semantic_blocking=False)
+            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=None,
+                                 no_semantic_blocking=False, rebalance_classes=False)
             self.assertAlmostEqual(loss.eval(), 0.)
 
             # 1 false positive instance
@@ -72,17 +74,37 @@ class MyTestCase(tf.test.TestCase):
             # 2 incorrect
             labels = [[0000, 0000, 1000, 2001, 2000]]
             labels_tensor = tf.convert_to_tensor(labels)  # 1 x 5
-            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=None, no_semantic_blocking=False)
+            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=None,
+                                 no_semantic_blocking=False, rebalance_classes=False)
             self.assertAlmostEqual(loss.eval(), 2.0/9.0)
 
     def test_spectral_loss_semantic_2d(self):
         with self.test_session():
             labels = [[0000, 0000, 1000, 2000, 2000], [0000, 1000, 1000, 0000, 0000]]
             labels_tensor = tf.convert_to_tensor(labels)  # 2 x 5
-            embeddings = tf.one_hot(labels_tensor, 2001)  # 2 x 5 x 2001
+            embeddings = tf.one_hot(labels_tensor, 2002)  # 2 x 5 x 2001
             instance_mask = tf.ones((2, 5))
-            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=8, no_semantic_blocking=False)
+            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=8,
+                                 no_semantic_blocking=False, rebalance_classes=False)
             self.assertAlmostEqual(loss.eval(), 0.)
+
+    def test_rebalance_classes(self):
+        with self.test_session():
+
+            # 9 total (within semantic class) edges (both directions)
+            # 2 incorrect
+            # That class has count 2, inverse prevalance 1/2
+            pred_labels = [[0000, 0000, 1000, 2000, 2000]]
+            pred_labels_tensor = tf.convert_to_tensor(pred_labels)  # 1 x 5
+            embeddings = tf.one_hot(pred_labels_tensor, 2002)  # 1 x 5 x 2001
+
+            true_labels = [[0000, 0000, 1000, 2001, 2000]]
+            true_labels_tensor = tf.convert_to_tensor(true_labels)  # 1 x 5
+            instance_mask = tf.ones((1, 5))
+            loss = spectral_loss(true_labels_tensor, embeddings, instance_mask, subsample_power=None,
+                                 no_semantic_blocking=False, rebalance_classes=True)
+            self.assertAlmostEqual(loss.eval(), 2/9 * (1/2)**2)
+
 
 if __name__ == '__main__':
     tf.test.main()

@@ -7,7 +7,7 @@ from tensorflow.python.util.tf_export import tf_export
 
 
 LARGE = 1e8
-
+N_SEMANTIC_CLASSES = 19
 
 @tf_export("losses.spectral")
 def spectral_loss(
@@ -19,7 +19,8 @@ def spectral_loss(
         reduction=Reduction.SUM_BY_NONZERO_WEIGHTS,
         subsample_power=12,
         no_semantic_blocking=False,
-        normalize=True):
+        normalize=True,
+        rebalance_classes=False):
     """
     Creates a spectral loss. Modified from tf.losses.softmax_cross_entropy.
     :param instance_labels:       `[batch_size, num_pixels]` target instance labels, int32 tensor.
@@ -35,6 +36,8 @@ def spectral_loss(
                                   If None, do not subsample.
     :param no_semantic_blocking:  If False, compute the loss for each semantic class independently.
     :param normalize:             Normalize pixel embeddings to have l2 norm of 1.
+    :param rebalance_classes:     If True, reweight semantic classes to have equal weight in loss function.
+                                  Only applies if no_semantic_blocking=False
     :return loss:                 Tensor of the same type as embeddings. If `reduction` is:
                                       `NONE` = shape [batch_size, subsample, subsample]
                                       Else   = Scalar
@@ -60,6 +63,10 @@ def spectral_loss(
 
         # Subsample pixels which are not masked (i.e. belong to a semantic class with instances)
         instance_mask = math_ops.cast(instance_mask, dtypes.float32)  # tf.multinomial only accepts float probabilities
+
+        # Rebalance semantic classes
+        # probs should be inverse semantic prevalences. so classes with half as many pixels will have twice the prob
+
         if subsample_power is not None:
             subsample = 2 ** subsample_power
             large_instance_mask = instance_mask*LARGE
@@ -69,12 +76,25 @@ def spectral_loss(
             instance_labels = batch_gather(instance_labels, sample_indices)  # batch_size x subsample
             embeddings = batch_gather(embeddings, sample_indices)  # batch_size x subsample x embedding_dim
 
+        semantic_labels = tf.cast(tf.floor(tf.divide(instance_labels, 1000)),
+                                  tf.int32)  # See cityscapesscripts/preparation/json2instanceImg.py
         if not no_semantic_blocking:
             print("Computing spectral loss within semantic classes.")
-            semantic_labels = tf.cast(tf.floor(tf.divide(instance_labels, 1000)), tf.int32) # See cityscapesscripts/preparation/json2instanceImg.py
-            semantic_adjacency = labels_to_adjacency(semantic_labels)
+            semantic_adjacency = labels_to_adjacency(semantic_labels)  # batch_size x subsample x subsample
+
+            # Reweight classes
+            if rebalance_classes:
+                semantic_onehot = tf.one_hot(semantic_labels, N_SEMANTIC_CLASSES)  # batch_size x subsample x N_SEMANTIC_CLASSES
+                semantic_counts = tf.reduce_sum(semantic_onehot, axis=1, keepdims=True)  # batch_size x 1 x N_SEMANTIC_CLASSES
+                inverse_semantic_prevalence = tf.pow(tf.truediv(1.0, semantic_counts), 2.0)  # square weights, because n_edges = n_nodes^2
+                sample_weights = tf.multiply(semantic_onehot, inverse_semantic_prevalence)  # batch_size x subsample x N_SEMANTIC_CLASSES
+                sample_weights = tf.where(tf.is_nan(sample_weights), tf.zeros_like(sample_weights), sample_weights)
+                sample_weights = tf.reduce_sum(sample_weights, 2, keepdims=True)  # batch_size x subsample x 1
+                sample_weights = tf.multiply(tf.cast(semantic_adjacency, sample_weights.dtype), sample_weights)  # batch_size x subsample x subsample
+            else:
+                sample_weights = semantic_adjacency
         else:
-            semantic_adjacency = 1.0
+            sample_weights = 1.0
 
         # Compute A
         A = labels_to_adjacency(instance_labels)  # batch_size x subsample x subsample
@@ -84,7 +104,7 @@ def spectral_loss(
 
         # Compute loss
         loss = tf.losses.mean_squared_error(A, A_predicted, scope=scope, loss_collection=loss_collection,
-                                            reduction=reduction, weights=semantic_adjacency)
+                                            reduction=reduction, weights=sample_weights)
         
         return loss
 
