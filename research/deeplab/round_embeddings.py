@@ -60,7 +60,7 @@ def batch_eval(args):
     num_instances /= len(outputs)
 
     # Compute final, dataset wide results
-    results_dict = evaluate_img_lists(pred_paths, gt_paths, args.emb_dir)
+    results_dict = evaluate_img_lists(pred_paths, gt_paths, args.round_dir)
     print 'Final results:'
     printResults(results_dict['averages'], eval_args)
     print 'Average number of instances per image {}'.format(num_instances)
@@ -80,7 +80,7 @@ def single_eval(inputs):
     pred_path, img_path, num_instances = round_embedding(embedding_path, semantic_path, args.round_dir, image_name)
 
     # Individual results
-    #results_dict = evaluate_img_lists([pred_path], [gt_instance_path], results_dir)
+    #results_dict = evaluate_img_lists([pred_path], [gt_instance_path], args.round_dir)
     #print('Rounding results for image {}'.format(image_name))
     #printResults(results_dict['averages'], eval_args)
     return pred_path, gt_instance_path, num_instances
