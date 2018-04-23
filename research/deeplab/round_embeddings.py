@@ -74,7 +74,7 @@ def single_eval(inputs):
     if args.true_semantic:
         semantic_path = os.path.join(args.semantic_dir, '{}{}'.format(image_name, GTSEMEND))
     else:
-        semantic_path = os.path.join(args.semantic_dir, image_name)
+        semantic_path = os.path.join(args.semantic_dir, '{}.png'.format(image_name))
     embedding_path = os.path.join(args.emb_dir, '{}{}'.format(image_name, EMBEND))
     gt_instance_path = os.path.join(dir_name, file_name)
     pred_path, img_path, num_instances = round_embedding(embedding_path, semantic_path, args.round_dir, image_name)
