@@ -385,6 +385,5 @@ def main(unused_argv):
 
 if __name__ == '__main__':
     flags.mark_flag_as_required('train_logdir')
-    flags.mark_flag_as_required('tf_initial_checkpoint')
     flags.mark_flag_as_required('dataset_dir')
     tf.app.run()
