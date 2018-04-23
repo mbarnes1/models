@@ -1,4 +1,3 @@
-#!/usr/bin/python
 """
 Round precomputed pixel instance embeddings and evaluate performance.
 """
@@ -23,23 +22,22 @@ EMBEND = '.npy'  # predicted pixel embedding file ending
 # For now, assume both these files in same directory, e.g. data/datasets/cityscapes/gtFine/val/
 IGNORELABEL = 255
 IMGEND = '_gtFine_instanceIds.png'  # ground truth instance labels file ending
-SEMEND = '_gtFine_labelIds.png'  # predicted semantic label file ending. For now, use ground truth
+GTSEMEND = '_gtFine_labelIds.png'  # predicted semantic label file ending. For now, use ground truth
 
 
 def batch_eval(args):
     """
     :param args:
     """
-    results_dir = os.path.join(args.log_dir, 'roundings')
-    if not os.path.exists(results_dir):
-        os.mkdir(results_dir)
+    if not os.path.exists(args.round_dir):
+        os.mkdir(args.round_dir)
 
-    print('Gathering all predictions...')
+    print('Gathering all ground truth instance files...')
     input_list = []
     for dir_name, _, fileList in os.walk(args.dataset_dir):
         for file_name in fileList:
             if file_name.endswith(IMGEND):
-                input_list.append((dir_name, file_name, results_dir, args.log_dir))
+                input_list.append((dir_name, file_name, args))
     print('Found {} ground truth images.'.format(len(input_list)))
     input_list = input_list[0:min(len(input_list), args.max_images)]
 
@@ -62,21 +60,24 @@ def batch_eval(args):
     num_instances /= len(outputs)
 
     # Compute final, dataset wide results
-    results_dict = evaluate_img_lists(pred_paths, gt_paths, results_dir)
+    results_dict = evaluate_img_lists(pred_paths, gt_paths, args.emb_dir)
     print 'Final results:'
     printResults(results_dict['averages'], eval_args)
     print 'Average number of instances per image {}'.format(num_instances)
     return results_dict
 
 
-def single_eval(args):
-    dir_name, file_name, results_dir, log_dir = args
+def single_eval(inputs):
+    dir_name, file_name, args = inputs
 
     image_name = file_name.rstrip(IMGEND)
-    semantic_path = os.path.join(dir_name, '{}{}'.format(image_name, SEMEND))
-    embedding_path = os.path.join(log_dir, '{}{}'.format(image_name, EMBEND))
+    if args.true_semantic:
+        semantic_path = os.path.join(args.semantic_dir, '{}{}'.format(image_name, GTSEMEND))
+    else:
+        semantic_path = os.path.join(args.semantic_dir, image_name)
+    embedding_path = os.path.join(args.emb_dir, '{}{}'.format(image_name, EMBEND))
     gt_instance_path = os.path.join(dir_name, file_name)
-    pred_path, img_path, num_instances = round_embedding(embedding_path, semantic_path, results_dir, image_name)
+    pred_path, img_path, num_instances = round_embedding(embedding_path, semantic_path, args.round_dir, image_name)
 
     # Individual results
     #results_dict = evaluate_img_lists([pred_path], [gt_instance_path], results_dir)
@@ -198,13 +199,23 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument("dataset_dir",
-                        help='Path to directory containing true instance and (predicted) semantic ID PNG files. '
+                        help='Path to directory containing true instance PNG files.'
                              'Files must match pattern:'
                              '{imagename}_instanceIds.png, e.g. frankfurt_000001_080091_instanceIds.png')
-
-    parser.add_argument("log_dir",
-                        help='Path to directory containing pixel embedding files. '
+    
+    parser.add_argument("semantic_dir",
+                        help='Path to directory containing semantic ID PNG files.')
+    
+    parser.add_argument("emb_dir",
+                        help='Path to directory containing pixel embedding files.'
                              'Files must match pattern {imagename}.npy')
+
+    parser.add_argument("round_dir",
+                        help='Directory to save rounding results to.')
+
+    parser.add_argument("--true_semantic", type=bool, action='store_true', default=False,
+                        help='Set if semantic_dir points to ground truth semantic files, which have directory'
+                             'and file format {city}/{city}_instanceIds.png')
 
     parser.add_argument("--max_images", default=np.Inf, type=int,
                         help='Evaluate at most this many images')
