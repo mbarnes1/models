@@ -77,7 +77,8 @@ def single_eval(inputs):
         semantic_path = os.path.join(args.semantic_dir, '{}.png'.format(image_name))
     embedding_path = os.path.join(args.emb_dir, '{}{}'.format(image_name, EMBEND))
     gt_instance_path = os.path.join(dir_name, file_name)
-    pred_path, img_path, num_instances = round_embedding(embedding_path, semantic_path, args.round_dir, image_name)
+    pred_path, img_path, num_instances = round_embedding(embedding_path, semantic_path, args.round_dir, image_name,
+                                                         mean_shift_iterations=args.mean_shift_iterations)
 
     # Individual results
     #results_dict = evaluate_img_lists([pred_path], [gt_instance_path], args.round_dir)
@@ -86,15 +87,16 @@ def single_eval(inputs):
     return pred_path, gt_instance_path, num_instances
 
 
-def round_embedding(embedding_path, semantic_path, results_dir, image_name):
+def round_embedding(embedding_path, semantic_path, results_dir, image_name, mean_shift_iterations=1):
     """
 
-    :param embedding_path: Path to predicted pixel embedding file.
-    :param semantic_path:  Path to predicted semantic image label file.
-    :param results_dir:    Write rounding results to this directory.
-    :param image_name:     Name of this image.
-    :return pred_path:     Path to prediction TXT image.
-    :return img_path:      Path to prediction PNG image.
+    :param embedding_path:         Path to predicted pixel embedding file.
+    :param semantic_path:          Path to predicted semantic image label file.
+    :param results_dir:            Write rounding results to this directory.
+    :param image_name:             Name of this image.
+    :param mean_shift_iterations:  Perform this many mean shift iterations during KwikCluster
+    :return pred_path:             Path to prediction TXT image.
+    :return img_path:              Path to prediction PNG image.
     """
     semantic_labels = imageio.imread(semantic_path)
 
@@ -105,7 +107,8 @@ def round_embedding(embedding_path, semantic_path, results_dir, image_name):
     if semantic_labels.shape != (h, w):
         raise ValueError('Prediction and Semantic label shapes {} and {} do not match'.format((h, w),
                                                                                               semantic_labels.shape))
-    pred_labels = kwik_cluster(np.reshape(embeddings, [-1, d]), cost_function, blocks=np.reshape(semantic_labels, [-1]))
+    pred_labels = kwik_cluster(np.reshape(embeddings, [-1, d]), cost_function, blocks=np.reshape(semantic_labels, [-1]),
+                               mean_shift_iterations=mean_shift_iterations)
     pred_labels = np.reshape(pred_labels, [h, w])
 
     instance_labels, instance_counts = np.unique(pred_labels, return_counts=True)
@@ -222,6 +225,9 @@ if __name__ == '__main__':
 
     parser.add_argument("--num_processes", default=1, type=int,
                         help="Number of parallel processes.")
+
+    parser.add_argument("--mean_shift_iterations", default=1, type=int,
+                        help='Perform this many iterations of mean shift during KwikCluster.')
 
     args = parser.parse_args()
 
