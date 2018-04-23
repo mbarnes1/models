@@ -7,7 +7,7 @@ from tensorflow.python.util.tf_export import tf_export
 
 
 LARGE = 1e8
-N_SEMANTIC_CLASSES = 19
+MAX_N_SEMANTIC_CLASSES = 21
 
 @tf_export("losses.spectral")
 def spectral_loss(
@@ -68,11 +68,25 @@ def spectral_loss(
         # probs should be inverse semantic prevalences. so classes with half as many pixels will have twice the prob
 
         if subsample_power is not None:
+            if rebalance_classes:
+                print('Rebalancing semantic classes')
+                semantic_labels = tf.cast(tf.floor(tf.divide(instance_labels, 1000)), tf.int32)  # See cityscapesscripts/preparation/json2instanceImg.py
+                semantic_onehot = tf.one_hot(semantic_labels, MAX_N_SEMANTIC_CLASSES)  # batch_size x subsample x N_SEMANTIC_CLASSES
+                semantic_counts = tf.reduce_sum(semantic_onehot, axis=1,
+                                                keepdims=True)  # batch_size x 1 x N_SEMANTIC_CLASSES
+                inverse_semantic_prevalence = tf.truediv(1.0, semantic_counts)  # square weights, because n_edges = n_nodes^2
+                inverse_semantic_prevalence = tf.where(tf.is_inf(inverse_semantic_prevalence), tf.zeros_like(inverse_semantic_prevalence), inverse_semantic_prevalence)
+                sample_weights = tf.multiply(semantic_onehot, inverse_semantic_prevalence)  # batch_size x subsample x N_SEMANTIC_CLASSES
+                sample_weights = tf.reduce_sum(sample_weights, 2)  # batch_size x subsample
+                sample_weights = tf.multiply(sample_weights, instance_mask)
+                sample_weights = tf.divide(sample_weights, tf.reduce_sum(sample_weights, axis=1, keepdims=True))  # normalize probabilities. may be unnnecessary
+            else:
+                sample_weights = instance_mask
             subsample = 2 ** subsample_power
-            large_instance_mask = instance_mask*LARGE
-            tf.assert_equal(tf.is_finite(large_instance_mask), True)
+            logprob = tf.log(sample_weights)  # instance_mask*LARGE
+            #tf.assert_equal(tf.is_finite(large_instance_mask), True)
             with tf.device("/cpu:0"):
-                sample_indices = tf.multinomial(large_instance_mask, subsample, output_dtype=tf.int32)  # batch_size x subsample
+                sample_indices = tf.multinomial(logprob, subsample, output_dtype=tf.int32)  # batch_size x subsample
             instance_labels = batch_gather(instance_labels, sample_indices)  # batch_size x subsample
             embeddings = batch_gather(embeddings, sample_indices)  # batch_size x subsample x embedding_dim
 
@@ -83,16 +97,17 @@ def spectral_loss(
             semantic_adjacency = labels_to_adjacency(semantic_labels)  # batch_size x subsample x subsample
 
             # Reweight classes
-            if rebalance_classes:
-                semantic_onehot = tf.one_hot(semantic_labels, N_SEMANTIC_CLASSES)  # batch_size x subsample x N_SEMANTIC_CLASSES
-                semantic_counts = tf.reduce_sum(semantic_onehot, axis=1, keepdims=True)  # batch_size x 1 x N_SEMANTIC_CLASSES
-                inverse_semantic_prevalence = tf.pow(tf.truediv(1.0, semantic_counts), 2.0)  # square weights, because n_edges = n_nodes^2
-                sample_weights = tf.multiply(semantic_onehot, inverse_semantic_prevalence)  # batch_size x subsample x N_SEMANTIC_CLASSES
-                sample_weights = tf.where(tf.is_nan(sample_weights), tf.zeros_like(sample_weights), sample_weights)
-                sample_weights = tf.reduce_sum(sample_weights, 2, keepdims=True)  # batch_size x subsample x 1
-                sample_weights = tf.multiply(tf.cast(semantic_adjacency, sample_weights.dtype), sample_weights)  # batch_size x subsample x subsample
-            else:
-                sample_weights = semantic_adjacency
+            # if rebalance_classes:
+            #     semantic_onehot = tf.one_hot(semantic_labels, N_SEMANTIC_CLASSES)  # batch_size x subsample x N_SEMANTIC_CLASSES
+            #     semantic_counts = tf.reduce_sum(semantic_onehot, axis=1, keepdims=True)  # batch_size x 1 x N_SEMANTIC_CLASSES
+            #     inverse_semantic_prevalence = tf.pow(tf.truediv(1.0, semantic_counts), 2.0)  # square weights, because n_edges = n_nodes^2
+            #     sample_weights = tf.multiply(semantic_onehot, inverse_semantic_prevalence)  # batch_size x subsample x N_SEMANTIC_CLASSES
+            #     sample_weights = tf.where(tf.is_nan(sample_weights), tf.zeros_like(sample_weights), sample_weights)
+            #     sample_weights = tf.reduce_sum(sample_weights, 2, keepdims=True)  # batch_size x subsample x 1
+            #     sample_weights = tf.multiply(tf.cast(semantic_adjacency, sample_weights.dtype), sample_weights)  # batch_size x subsample x subsample
+            # else:
+            #     sample_weights = semantic_adjacency
+            sample_weights = semantic_adjacency
         else:
             sample_weights = 1.0
 

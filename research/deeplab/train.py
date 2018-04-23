@@ -172,6 +172,8 @@ flags.DEFINE_boolean('spectral', False, 'Use spectral loss to learn pixel instan
 
 flags.DEFINE_boolean('no_semantic_blocking', False, 'Only compute spectral loss within semantic classes.')
 
+flags.DEFINE_boolean('rebalance_classes', False, 'Rebalance semantic classes during resampling.')
+
 
 def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
     """Builds a clone of DeepLab.
