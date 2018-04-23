@@ -213,7 +213,7 @@ if __name__ == '__main__':
     parser.add_argument("round_dir",
                         help='Directory to save rounding results to.')
 
-    parser.add_argument("--true_semantic", type=bool, action='store_true', default=False,
+    parser.add_argument("--true_semantic", action='store_true', default=False,
                         help='Set if semantic_dir points to ground truth semantic files, which have directory'
                              'and file format {city}/{city}_instanceIds.png')
 
