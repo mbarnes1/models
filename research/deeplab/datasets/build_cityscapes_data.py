@@ -140,7 +140,7 @@ def _convert_dataset(dataset_split):
   num_per_shard = int(math.ceil(num_images / float(_NUM_SHARDS)))
 
   image_reader = build_data.ImageReader('png', channels=3)
-  label_reader = build_data.ImageReader('png', channels=1)
+  label_reader = build_data.ImageReader('png', channels=1, dtype=tf.uint16)
 
   for shard_id in range(_NUM_SHARDS):
     shard_filename = '%s-%05d-of-%05d.tfrecord' % (
