@@ -91,9 +91,8 @@ class MyTestCase(tf.test.TestCase):
     def test_rebalance_classes(self):
         with self.test_session():
 
-            # 9 total (within semantic class) edges (both directions)
-            # 2 incorrect
-            # That class has count 2, inverse prevalance 1/2
+            # Semantic class 2 has 2 FPs and 2 TPs = error 0.5
+            # Total of 3 classes, so 0.5/3 net error.
             pred_labels = [[0000, 0000, 1000, 2000, 2000]]
             pred_labels_tensor = tf.convert_to_tensor(pred_labels)  # 1 x 5
             embeddings = tf.one_hot(pred_labels_tensor, 2002)  # 1 x 5 x 2001
@@ -101,11 +100,10 @@ class MyTestCase(tf.test.TestCase):
             true_labels = [[0000, 0000, 1000, 2001, 2000]]
             true_labels_tensor = tf.convert_to_tensor(true_labels)  # 1 x 5
             instance_mask = tf.ones((1, 5))
-            loss = spectral_loss(true_labels_tensor, embeddings, instance_mask, subsample_power=None,
+            loss = spectral_loss(true_labels_tensor, embeddings, instance_mask, subsample_power=14,
                                  no_semantic_blocking=False, rebalance_classes=True)
-            self.assertAlmostEqual(loss.eval(), 2/9 * (1/2)**2)
+            self.assertAlmostEqual(loss.eval(), 1/3*1/2, places=2)
 
 
 if __name__ == '__main__':
     tf.test.main()
-    

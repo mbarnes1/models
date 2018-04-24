@@ -66,7 +66,7 @@ def add_spectral_loss_for_each_scale(scales_to_logits,
         scaled_labels = tf.reshape(scaled_labels, shape=[batch_size, -1])  # batch x npixels
         logits = tf.reshape(logits, shape=[batch_size, -1, embedding_dim])  # batch x npixels x embedding dim
         spectral_loss(scaled_labels, logits, not_ignore_mask, scope=loss_scope,
-                      no_semantic_blocking=flags.no_semantic_blocking)
+                      no_semantic_blocking=flags.no_semantic_blocking, rebalance_classes=flags.rebalance_classes)
 
 
 def add_softmax_cross_entropy_loss_for_each_scale(scales_to_logits,
