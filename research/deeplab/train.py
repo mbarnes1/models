@@ -260,8 +260,9 @@ def main(unused_argv):
     clone_batch_size = FLAGS.train_batch_size / config.num_clones
 
     # Get dataset-dependent information.
+    label_dtype = tf.uint16 if FLAGS.spectral else tf.uint8
     dataset = segmentation_dataset.get_dataset(
-        FLAGS.dataset, FLAGS.train_split, dataset_dir=FLAGS.dataset_dir)
+        FLAGS.dataset, FLAGS.train_split, dataset_dir=FLAGS.dataset_dir, label_dtype=label_dtype)
 
     FLAGS.train_logdir = timestamp_dir(FLAGS.train_logdir)
     tf.gfile.MakeDirs(FLAGS.train_logdir)

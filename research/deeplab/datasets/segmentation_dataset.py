@@ -99,14 +99,14 @@ def get_cityscapes_dataset_name():
   return 'cityscapes'
 
 
-def get_dataset(dataset_name, split_name, dataset_dir):
+def get_dataset(dataset_name, split_name, dataset_dir, label_dtype=tf.uint8):
   """Gets an instance of slim Dataset.
 
   Args:
     dataset_name: Dataset name.
     split_name: A train/val Split name.
     dataset_dir: The directory of the dataset sources.
-
+    label_dtype: Expected label datatype in tfrecord.
   Returns:
     An instance of slim Dataset.
 
@@ -145,6 +145,7 @@ def get_dataset(dataset_name, split_name, dataset_dir):
       'image/segmentation/class/format': tf.FixedLenFeature(
           (), tf.string, default_value='png'),
   }
+
   items_to_handlers = {
       'image': tfexample_decoder.Image(
           image_key='image/encoded',
@@ -157,7 +158,7 @@ def get_dataset(dataset_name, split_name, dataset_dir):
           image_key='image/segmentation/class/encoded',
           format_key='image/segmentation/class/format',
           channels=1,
-          dtype=tf.uint16),
+          dtype=label_dtype),
   }
 
   decoder = tfexample_decoder.TFExampleDecoder(
