@@ -54,6 +54,9 @@ def spectral_loss(
         raise ValueError("embeddings must not be None.")
     if instance_mask is None:
         raise ValueError("instance_mask must not be None.")  # TODO: Allow None, and set to no mask.
+    if tf.reduce_max(instance_labels) < 256:
+        raise ValueError("Error of decoding tfrecords")
+    
     with ops.name_scope(scope, "spectral_loss", (embeddings, instance_labels, instance_mask)) as scope:
         embeddings.get_shape()[0:2].assert_is_compatible_with(instance_labels.get_shape())
         instance_labels.get_shape().assert_is_compatible_with(instance_mask.get_shape())
