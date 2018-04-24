@@ -174,6 +174,11 @@ flags.DEFINE_boolean('no_semantic_blocking', False, 'Only compute spectral loss 
 
 flags.DEFINE_boolean('rebalance_classes', False, 'Rebalance semantic classes during resampling.')
 
+flags.DEFINE_float('packing_radius', 1.0, 'In (0, 1]. Between cluster embeddings have 0 loss when their inner products '
+                                          'are less than (1 - spherical_packing_radius). Value of 1 corresponds to no '
+                                          'packing (perfect cluster embeddings are orthogonal). Values closer to 0 '
+                                          'correspond to more spherical packing.')
+
 
 def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
     """Builds a clone of DeepLab.

@@ -88,6 +88,25 @@ class MyTestCase(tf.test.TestCase):
                                  no_semantic_blocking=False, rebalance_classes=False)
             self.assertAlmostEqual(loss.eval(), 0.)
 
+    def test_spherical_packing(self):
+        with self.test_session():
+            labels = [[0, 1, 1, 2, 2]]
+            labels_tensor = tf.convert_to_tensor(labels)  # 1 x 5
+            embeddings_array = np.array([[[1, 0, 0],
+                                        [0, 2**0.5/2, 2**0.5/2],
+                                        [0, 2**0.5/2, 2**0.5/2],
+                                        [0, 0, 1],
+                                        [0, 0, 1]]])
+            embeddings = tf.convert_to_tensor(embeddings_array)
+            instance_mask = tf.ones((1, 5))
+            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=None,
+                                 no_semantic_blocking=True, rebalance_classes=False)
+            loss_true = (2**0.5/2)**2 * 8/25  # 8 bad edges out of 25
+            self.assertAlmostEqual(loss.eval(), loss_true)
+            loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=None,
+                                 no_semantic_blocking=True, rebalance_classes=False, spherical_packing_radius=(1 - 2**0.5/2))
+            self.assertAlmostEqual(loss.eval(), 0.0)
+
     def test_rebalance_classes(self):
         with self.test_session():
 

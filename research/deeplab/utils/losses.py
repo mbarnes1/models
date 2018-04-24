@@ -1,3 +1,4 @@
+from __future__ import division
 import tensorflow as tf
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops
@@ -20,33 +21,40 @@ def spectral_loss(
         subsample_power=12,
         no_semantic_blocking=False,
         normalize=True,
-        rebalance_classes=False):
+        rebalance_classes=False,
+        spherical_packing_radius=1.0):
     """
     Creates a spectral loss. Modified from tf.losses.softmax_cross_entropy.
-    :param instance_labels:       `[batch_size, num_pixels]` target instance labels, int32 tensor.
-    :param embeddings:            `[batch_size, num_pixels, embedding_dim]` pixel embedding output of network, float tensor.
-    :param instance_mask:         '[batch_size, num_pixels]' binary Tensor.
-                                      1 = Semantic class of pixel has instances, learn pixel embedding.
-                                      0 = Semantic class of pixel does not have instances, so do not learn embedding.
-    :param scope:                 The scope for the operations performed in computing the loss.
-    :param loss_collection:       Collection to which the loss will be added.
-    :param reduction:             Type of reduction to apply to loss.
-    :param subsample_power:       Uniformly randomly sample 2**subsample_power many pixels per image when computing the loss.
-                                  Must be power of 2 to avoid bias in tensorflow random sampling.
-                                  If None, do not subsample.
-    :param no_semantic_blocking:  If False, compute the loss for each semantic class independently.
-    :param normalize:             Normalize pixel embeddings to have l2 norm of 1.
-    :param rebalance_classes:     If True, reweight semantic classes to have equal weight in loss function.
-                                  Only applies if no_semantic_blocking=False
-    :return loss:                 Tensor of the same type as embeddings. If `reduction` is:
-                                      `NONE` = shape [batch_size, subsample, subsample]
-                                      Else   = Scalar
+    :param instance_labels:             `[batch_size, num_pixels]` target instance labels, int32 tensor.
+    :param embeddings:                  `[batch_size, num_pixels, embedding_dim]` pixel embedding output of network, float tensor.
+    :param instance_mask:               '[batch_size, num_pixels]' binary Tensor.
+                                             1 = Semantic class of pixel has instances, learn pixel embedding.
+                                            0 = Semantic class of pixel does not have instances, so do not learn embedding.
+    :param scope:                       The scope for the operations performed in computing the loss.
+    :param loss_collection:             Collection to which the loss will be added.
+    :param reduction:                   Type of reduction to apply to loss.
+    :param subsample_power:             Uniformly randomly sample 2**subsample_power many pixels per image when computing the loss.
+                                        Must be power of 2 to avoid bias in tensorflow random sampling.
+                                        If None, do not subsample.
+    :param no_semantic_blocking:        If False, compute the loss for each semantic class independently.
+    :param normalize:                   Normalize pixel embeddings to have l2 norm of 1.
+    :param rebalance_classes:           If True, reweight semantic classes to have equal weight in loss function.
+                                        Only applies if no_semantic_blocking=False
+    :param spherical_packing_radius:    In (0, 1]. Between cluster embeddings have 0 loss when their inner products are
+                                        less than (1 - spherical_packing_radius). Value of 1 corresponds to no packing
+                                        (perfect cluster embeddings are orthogonal). Values closer to 0 correspond to
+                                        more spherical packing.
+    :return loss:                       Tensor of the same type as embeddings. If `reduction` is:
+                                            `NONE` = shape [batch_size, subsample, subsample]
+                                            Else   = Scalar
     Raises:
         ValueError:               If batch_size and num_pixels of `embeddings` and `instance_labels` do not match
                                   or if the shape of `instance_mask` is invalid or if `instance_mask` is None.  Also if
                                   `instance_labels` or `embeddings` is None.
     """
     assert isinstance(subsample_power, int) or subsample_power is None
+    assert isinstance(spherical_packing_radius, float) and 0.0 < spherical_packing_radius <= 1.0
+    print('Using spherical packing radius of {}'.format(spherical_packing_radius))
     assert 0 <= subsample_power <= 16 or subsample_power is None  # tradeoff between memory and variance.
     if instance_labels is None:
         raise ValueError("instance_labels must not be None.")
@@ -93,7 +101,7 @@ def spectral_loss(
         semantic_labels = tf.cast(tf.floor(tf.divide(instance_labels, 1000)),
                                   tf.int32)  # See cityscapesscripts/preparation/json2instanceImg.py
         if not no_semantic_blocking:
-            print("Computing spectral loss within semantic classes.")
+            print("Computing spectral loss only within semantic classes.")
             semantic_adjacency = labels_to_adjacency(semantic_labels)  # batch_size x subsample x subsample
 
             # Reweight classes
@@ -118,9 +126,15 @@ def spectral_loss(
         A_predicted = tf.matmul(embeddings, tf.transpose(embeddings, [0, 2, 1]))  # batch_size x subsample x subsample
 
         # Compute loss
-        loss = tf.losses.mean_squared_error(A, A_predicted, scope=scope, loss_collection=loss_collection,
+        between_cluster_mask = tf.cast(~A, A_predicted.dtype)
+        A_float32 = tf.cast(A, A_predicted.dtype)
+        packed_error_between_cluster = \
+            tf.maximum(tf.multiply(between_cluster_mask,
+                                   (A_predicted - 1.0 + spherical_packing_radius)/spherical_packing_radius), 0.0)
+        error_within_cluster = tf.multiply(A_float32, A_float32 - A_predicted)
+        error = packed_error_between_cluster + error_within_cluster
+        loss = tf.losses.mean_squared_error(error, tf.zeros_like(error), scope=scope, loss_collection=loss_collection,
                                             reduction=reduction, weights=sample_weights)
-        
         return loss
 
 
