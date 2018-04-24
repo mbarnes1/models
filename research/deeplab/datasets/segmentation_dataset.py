@@ -156,7 +156,8 @@ def get_dataset(dataset_name, split_name, dataset_dir):
       'labels_class': tfexample_decoder.Image(
           image_key='image/segmentation/class/encoded',
           format_key='image/segmentation/class/format',
-          channels=1),
+          channels=1,
+          dtype=tf.uint16),
   }
 
   decoder = tfexample_decoder.TFExampleDecoder(
