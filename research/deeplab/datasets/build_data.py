@@ -51,7 +51,7 @@ _IMAGE_FORMAT_MAP = {
 class ImageReader(object):
   """Helper class that provides TensorFlow image coding utilities."""
 
-  def __init__(self, image_format='jpeg', channels=3):
+  def __init__(self, image_format='jpeg', channels=3, dtype=tf.uint8):
     """Class constructor.
 
     Args:
@@ -67,7 +67,7 @@ class ImageReader(object):
                                             channels=channels)
       elif self._image_format == 'png':
         self._decode = tf.image.decode_png(self._decode_data,
-                                           channels=channels)
+                                           channels=channels, dtype=dtype)
 
   def read_image_dims(self, image_data):
     """Reads the image dimensions.
