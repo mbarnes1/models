@@ -21,6 +21,9 @@ class TestTfrecords(unittest.TestCase):
             if "train" in tfrecord:
                 image_original_path = os.path.join(dataset, "leftImg8bit/", "train/")
                 instance_path = os.path.join(dataset, "gtFine/", "train/")
+            elif "val" in tfrecord:
+                image_original_path = os.path.join(dataset, "leftImg8bit/", "val/")
+                instance_path = os.path.join(dataset, "gtFine/", "val/")
             else:
                 image_original_path = os.path.join(dataset, "leftImg8bit/", "test/")
                 instance_path = os.path.join(dataset, "gtFine/", "test/")
