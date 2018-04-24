@@ -78,7 +78,8 @@ def single_eval(inputs):
     embedding_path = os.path.join(args.emb_dir, '{}{}'.format(image_name, EMBEND))
     gt_instance_path = os.path.join(dir_name, file_name)
     pred_path, img_path, num_instances = round_embedding(embedding_path, semantic_path, args.round_dir, image_name,
-                                                         mean_shift_iterations=args.mean_shift_iterations)
+                                                         mean_shift_iterations=args.mean_shift_iterations,
+                                                         packing_radius=args.packing_radius)
 
     # Individual results
     #results_dict = evaluate_img_lists([pred_path], [gt_instance_path], args.round_dir)
@@ -87,7 +88,7 @@ def single_eval(inputs):
     return pred_path, gt_instance_path, num_instances
 
 
-def round_embedding(embedding_path, semantic_path, results_dir, image_name, mean_shift_iterations=1):
+def round_embedding(embedding_path, semantic_path, results_dir, image_name, mean_shift_iterations=1, packing_radius=1.):
     """
 
     :param embedding_path:         Path to predicted pixel embedding file.
@@ -95,12 +96,13 @@ def round_embedding(embedding_path, semantic_path, results_dir, image_name, mean
     :param results_dir:            Write rounding results to this directory.
     :param image_name:             Name of this image.
     :param mean_shift_iterations:  Perform this many mean shift iterations during KwikCluster
+    :param packing_radius:         Spherical packing radius used in training.
     :return pred_path:             Path to prediction TXT image.
     :return img_path:              Path to prediction PNG image.
     """
     semantic_labels = imageio.imread(semantic_path)
 
-    cost_function = partial(lp_cost, p=10)
+    cost_function = partial(lp_cost, p=10, packing_radius=packing_radius)
     embeddings = np.load(embedding_path)
     h, w, d = embeddings.shape
 
@@ -215,6 +217,9 @@ if __name__ == '__main__':
 
     parser.add_argument("round_dir",
                         help='Directory to save rounding results to.')
+
+    parser.add_argument("--packing_radius", type=float, default=1.0,
+                        help='The spherical packing radius used during training.')
 
     parser.add_argument("--true_semantic", action='store_true', default=False,
                         help='Set if semantic_dir points to ground truth semantic files, which have directory'

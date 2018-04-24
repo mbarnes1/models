@@ -2,6 +2,7 @@
 Rounding schemes.
 """
 
+from __future__ import division
 import numpy as np
 import random
 
@@ -58,13 +59,15 @@ def kwik_cluster(V, cost_function, blocks=None, normalize=True, mean_shift_itera
     return labels
 
 
-def lp_cost(x, p=2):
+def lp_cost(x, p=2, packing_radius=1.0):
     """
-    :param x: Numpy vector of dot products (i.e. 1 - cosine similarity)
-    :param p: Power to raise x
-    :return:  Cost of placing these two samples in different clusters. In [0, 1]
+    :param x:               Numpy vector of dot products (i.e. 1 - cosine similarity)
+    :param p:               Power to raise x
+    :param packing_radius:  Spherical packing radius used in training
+    :return:                Cost of placing these two samples in different clusters. In [0, 1]
     """
-    x = np.maximum(x, 0.)
-    num = np.power(x, p)
-    den = num + np.power((1.0 - x), p)
+    c_minus = np.maximum(1/packing_radius * (x - 1 + packing_radius), 0.)  # cost of labeling negative
+    c_plus = 1.0 - x  # cost of labeling positive
+    num = np.power(c_minus, p)
+    den = num + np.power(c_plus, p)
     return np.divide(num, den)
