@@ -54,7 +54,7 @@ class TestTfrecords(unittest.TestCase):
                     # Frecords content
                     img_1d = sess.run(tf.image.decode_png(img_string, channels=3))
                     reconstructed_img = img_1d.reshape((height, width, -1))
-                    annotation_1d = sess.run(tf.image.decode_png(annotation_string, channels=1))
+                    annotation_1d = sess.run(tf.image.decode_png(annotation_string, channels=1, dtype=tf.uint16))
                     reconstructed_annotation = annotation_1d.reshape((height, width))
                 
                     # Original Data
