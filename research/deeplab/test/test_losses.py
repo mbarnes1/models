@@ -45,16 +45,16 @@ class MyTestCase(tf.test.TestCase):
 
     def test_spectral_loss(self):
         with self.test_session():
-            labels = [[0, 0, 1, 2, 2]]
+            labels = [[1000, 1000, 1001, 1002, 1002]]
             labels_tensor = tf.convert_to_tensor(labels)  # 1 x 5
-            embeddings = tf.one_hot(labels_tensor, 3)  # 1 x 5 x 3
+            embeddings = tf.one_hot(labels_tensor, 1005)  # 1 x 5 x 3
             instance_mask = tf.ones((1, 5))
             loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=8, rebalance_classes=False)
             self.assertAlmostEqual(loss.eval(), 0.)
 
             # Induce 1 FP and 1 FN by flipping one label
             # 2*2/5^2 = 0.16
-            labels = [[0, 0, 1, 2, 1]]
+            labels = [[1000, 1000, 1001, 1002, 1001]]
             labels_tensor = tf.convert_to_tensor(labels)  # 1 x 5
             loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=12, rebalance_classes=False)
             self.assertAlmostEqual(loss.eval(), 0.16, places=1)
@@ -90,7 +90,7 @@ class MyTestCase(tf.test.TestCase):
 
     def test_spherical_packing(self):
         with self.test_session():
-            labels = [[0, 1, 1, 2, 2]]
+            labels = [[1000, 1001, 1001, 1002, 1002]]
             labels_tensor = tf.convert_to_tensor(labels)  # 1 x 5
             embeddings_array = np.array([[[1, 0, 0],
                                         [0, 2**0.5/2, 2**0.5/2],
@@ -119,9 +119,18 @@ class MyTestCase(tf.test.TestCase):
             true_labels = [[0000, 0000, 1000, 2001, 2000]]
             true_labels_tensor = tf.convert_to_tensor(true_labels)  # 1 x 5
             instance_mask = tf.ones((1, 5))
-            loss = spectral_loss(true_labels_tensor, embeddings, instance_mask, subsample_power=14,
+            loss = spectral_loss(true_labels_tensor, embeddings, instance_mask, subsample_power=11,
                                  no_semantic_blocking=False, rebalance_classes=True)
-            self.assertAlmostEqual(loss.eval(), 1/3*1/2, places=2)
+            self.assertAlmostEqual(loss.eval(), 1/3*1/2, places=1)
+
+    def test_assertions(self):
+        with self.test_session():
+            labels = [[0, 1, 1, 2, 3], [4, 1, 2, 3, 6]]
+            labels_tensor = tf.convert_to_tensor(labels)  # 2 x 5
+            embeddings = tf.one_hot(labels_tensor, 10)  # 2 x 5 x 2001
+            instance_mask = tf.ones((2, 5))
+            loss = spectral_loss(labels_tensor, embeddings, instance_mask)
+            self.assertRaises(tf.errors.InvalidArgumentError, loss.eval)
 
 
 if __name__ == '__main__':
