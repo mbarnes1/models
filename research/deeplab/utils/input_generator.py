@@ -72,7 +72,8 @@ def get(dataset,
         num_threads=1,
         dataset_split=None,
         is_training=True,
-        model_variant=None):
+        model_variant=None, 
+        location = True):
   """Gets the dataset split for semantic segmentation.
 
   This functions gets the dataset split for semantic segmentation. In
@@ -144,7 +145,8 @@ def get(dataset,
       scale_factor_step_size=scale_factor_step_size,
       ignore_label=dataset.ignore_label,
       is_training=is_training,
-      model_variant=model_variant)
+      model_variant=model_variant, 
+      location=location)
   sample = {
       common.IMAGE: image,
       common.IMAGE_NAME: image_name,

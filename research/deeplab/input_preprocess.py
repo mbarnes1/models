@@ -23,6 +23,31 @@ from deeplab.core import preprocess_utils
 # left-right during training
 _PROB_OF_FLIP = 0.5
 
+def add_location(image):
+  """Adds two dimension to the given image which are
+  the x and y positions of the pixel in the image
+  
+  Arguments:
+    image: Input Image.
+
+  Returns:
+    positioned_image: Image with the two new dimensions
+  """
+  dim = tf.shape(image, out_type=tf.int32)
+
+  # Creation matrix of position
+  x = tf.cast(tf.range(0., 1., delta = 1./tf.cast(dim[1], tf.float32)), image.dtype)
+  x = tf.tile(x, [dim[0]])
+  x = tf.reshape(x,[dim[0], dim[1], 1])
+
+  y = tf.cast(tf.range(0., 1., delta = 1./tf.cast(dim[0], tf.float32)), image.dtype)
+  y = tf.tile(y, [dim[1]])
+  y = tf.reshape(y,[dim[1], dim[0], 1])
+  y = tf.transpose(y, perm=[1, 0, 2])
+
+  position = tf.concat([x,y], 2)
+
+  return tf.concat([image, position], 2)
 
 def preprocess_image_and_label(image,
                                label,
@@ -36,7 +61,8 @@ def preprocess_image_and_label(image,
                                scale_factor_step_size=0,
                                ignore_label=255,
                                is_training=True,
-                               model_variant=None):
+                               model_variant=None,
+                               location=True):
   """Preprocesses the image and label.
 
   Args:
@@ -57,6 +83,7 @@ def preprocess_image_and_label(image,
     is_training: If the preprocessing is used for training or not.
     model_variant: Model variant (string) for choosing how to mean-subtract the
       images. See feature_extractor.network_map for supported model variants.
+    location: Add the location dimension (which represents the pixel position)
 
   Returns:
     original_image: Original image (could be resized).
@@ -133,5 +160,8 @@ def preprocess_image_and_label(image,
     # Randomly left-right flip the image and label.
     processed_image, label, _ = preprocess_utils.flip_dim(
         [processed_image, label], _PROB_OF_FLIP, dim=1)
+
+  if location:
+    original_image, processed_image = add_location(original_image), add_location(processed_image)
 
   return original_image, processed_image, label

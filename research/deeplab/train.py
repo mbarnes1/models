@@ -179,6 +179,8 @@ flags.DEFINE_float('packing_radius', 1.0, 'In (0, 1]. Between cluster embeddings
                                           'packing (perfect cluster embeddings are orthogonal). Values closer to 0 '
                                           'correspond to more spherical packing.')
 
+# Location
+flags.DEFINE_boolean('location', False, 'Add two dimensions to the image in order to take into account the location of each pixel.')
 
 def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
     """Builds a clone of DeepLab.
@@ -290,7 +292,8 @@ def main(unused_argv):
                 is_training=True,
                 model_variant=FLAGS.model_variant,
                 num_readers=FLAGS.num_readers,
-                num_threads=FLAGS.num_threads
+                num_threads=FLAGS.num_threads,
+                location=FLAGS.location
             )
             inputs_queue = prefetch_queue.prefetch_queue(
                 samples, capacity=128 * config.num_clones)
@@ -393,6 +396,5 @@ def main(unused_argv):
 
 if __name__ == '__main__':
     flags.mark_flag_as_required('train_logdir')
-    flags.mark_flag_as_required('tf_initial_checkpoint')
     flags.mark_flag_as_required('dataset_dir')
     tf.app.run()

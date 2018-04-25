@@ -43,6 +43,13 @@ References:
 import collections
 import os.path
 import tensorflow as tf
+from tensorflow.python.ops import array_ops
+from tensorflow.python.ops import control_flow_ops
+from tensorflow.python.ops import functional_ops
+from tensorflow.python.ops import image_ops
+from tensorflow.python.ops import math_ops
+from tensorflow.python.ops import parsing_ops
+from tensorflow.python.ops import sparse_ops
 
 slim = tf.contrib.slim
 
@@ -50,6 +57,26 @@ dataset = slim.dataset
 
 tfexample_decoder = slim.tfexample_decoder
 
+class Image_Corrected(tfexample_decoder.Image):
+    """An ItemHandler that decodes a parsed Tensor as an image."""
+
+    def _decode(self, image_buffer, image_format):
+        """We overwrite this function because of a problem of type
+        However we will have to change it in order to deal with jpeg files
+        TODO : Update tf when this function will be changed
+        """
+
+
+        def decode_image():
+            """Decodes a image based on the headers."""
+            return math_ops.cast(image_ops.decode_image(image_buffer, self._channels), self._dtype)
+
+        image = decode_image()
+        image.set_shape([None, None, self._channels])
+        if self._shape is not None:
+            image = array_ops.reshape(image, self._shape)
+
+        return image
 
 _ITEMS_TO_DESCRIPTIONS = {
     'image': 'A color image of varying height and width.',
@@ -147,14 +174,14 @@ def get_dataset(dataset_name, split_name, dataset_dir, label_dtype=tf.uint8):
   }
 
   items_to_handlers = {
-      'image': tfexample_decoder.Image(
+      'image': Image_Corrected(
           image_key='image/encoded',
           format_key='image/format',
           channels=3),
       'image_name': tfexample_decoder.Tensor('image/filename'),
       'height': tfexample_decoder.Tensor('image/height'),
       'width': tfexample_decoder.Tensor('image/width'),
-      'labels_class': tfexample_decoder.Image(
+      'labels_class': Image_Corrected(
           image_key='image/segmentation/class/encoded',
           format_key='image/segmentation/class/format',
           channels=1,
