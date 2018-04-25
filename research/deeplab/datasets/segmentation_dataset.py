@@ -65,13 +65,10 @@ class Image_Corrected(tfexample_decoder.Image):
         However we will have to change it in order to deal with jpeg files
         TODO : Update tf when this function will be changed
         """
-
-
-        def decode_image():
-            """Decodes a image based on the headers."""
-            return math_ops.cast(image_ops.decode_image(image_buffer, self._channels), self._dtype)
-
-        image = decode_image()
+        if image_format in ('jpeg', 'jpg'):
+            image = tf.image.decode_jpeg(image_buffer, channels=self._channels, dtype=self._dtype)
+        elif image_format == 'png':
+            image = tf.image.decode_png(image_buffer, channels=self._channels, dtype=self._dtype)
         image.set_shape([None, None, self._channels])
         if self._shape is not None:
             image = array_ops.reshape(image, self._shape)
