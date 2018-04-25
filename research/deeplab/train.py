@@ -174,6 +174,8 @@ flags.DEFINE_boolean('no_semantic_blocking', False, 'Only compute spectral loss 
 
 flags.DEFINE_boolean('rebalance_classes', False, 'Rebalance semantic classes during resampling.')
 
+# Location
+flags.DEFINE_boolean('location', False, 'Add two dimensions to the image in order to take into account the location of each pixel.')
 
 def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
     """Builds a clone of DeepLab.
@@ -284,7 +286,8 @@ def main(unused_argv):
                 is_training=True,
                 model_variant=FLAGS.model_variant,
                 num_readers=FLAGS.num_readers,
-                num_threads=FLAGS.num_threads
+                num_threads=FLAGS.num_threads,
+                location=FLAGS.location
             )
             inputs_queue = prefetch_queue.prefetch_queue(
                 samples, capacity=128 * config.num_clones)
