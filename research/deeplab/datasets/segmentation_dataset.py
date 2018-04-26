@@ -59,22 +59,27 @@ tfexample_decoder = slim.tfexample_decoder
 
 
 class ImageCorrected(tfexample_decoder.Image):
-    """An ItemHandler that decodes a parsed Tensor as an image."""
+    """
+    An ItemHandler that decodes a parsed Tensor as an image.
+    Overwrites single method from base class to handle uint16 png images.
+    """
 
     def _decode(self, image_buffer, image_format):
-        """We overwrite this function because of a problem of type
-        However we will have to change it in order to deal with jpeg files
-        TODO : Update tf when this function will be changed
+        """
+        Overwrites base method to handle uint16 png images. No longer handles JPG images.
+        TODO: Update tf when this function will be changed
         """
         def decode_image():
             """Decodes a image based on the headers."""
-            return math_ops.cast(image_ops.decode_image(image_buffer, self._channels), self._dtype)
+            # return image_ops.decode_image(image_buffer, channels=self._channels)
+            return image_ops.decode_png(image_buffer, channels=self._channels, dtype=self._dtype)
 
         image = decode_image()
         image.set_shape([None, None, self._channels])
         if self._shape is not None:
             image = array_ops.reshape(image, self._shape)
 
+        assert image.dtype == tf.uint16
         return image
 
 
@@ -174,7 +179,7 @@ def get_dataset(dataset_name, split_name, dataset_dir, label_dtype=tf.uint8):
   }
 
   items_to_handlers = {
-      'image': ImageCorrected(
+      'image': tfexample_decoder.Image(
           image_key='image/encoded',
           format_key='image/format',
           channels=3),
