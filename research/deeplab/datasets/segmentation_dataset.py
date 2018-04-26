@@ -68,7 +68,7 @@ class ImageCorrected(tfexample_decoder.Image):
         """
         def decode_image():
             """Decodes a image based on the headers."""
-            return image_ops.decode_png(image_buffer, self._channels, dtype=self._dtype)
+            return math_ops.cast(image_ops.decode_image(image_buffer, self._channels), self._dtype)
 
         image = decode_image()
         image.set_shape([None, None, self._channels])
