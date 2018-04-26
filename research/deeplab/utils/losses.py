@@ -65,7 +65,7 @@ def spectral_loss(
         raise ValueError("instance_mask must not be None.")  # TODO: Allow None, and set to no mask.
     
     with ops.name_scope(scope, "spectral_loss", (embeddings, instance_labels, instance_mask)) as scope:
-        label_assertions = [tf.assert_greater_equal(tf.reduce_max(instance_labels), 256)]
+        label_assertions = [tf.assert_greater_equal(tf.reduce_max(instance_labels), 0)]
         with tf.control_dependencies(label_assertions):
             embeddings.get_shape()[0:2].assert_is_compatible_with(instance_labels.get_shape())
             instance_labels.get_shape().assert_is_compatible_with(instance_mask.get_shape())
