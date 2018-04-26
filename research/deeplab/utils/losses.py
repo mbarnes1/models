@@ -9,6 +9,7 @@ from tensorflow.python.util.tf_export import tf_export
 
 LARGE = 1e8
 MAX_N_SEMANTIC_CLASSES = 21
+SMALL = 1e-12
 
 @tf_export("losses.spectral")
 def spectral_loss(
@@ -64,8 +65,8 @@ def spectral_loss(
         raise ValueError("instance_mask must not be None.")  # TODO: Allow None, and set to no mask.
     
     with ops.name_scope(scope, "spectral_loss", (embeddings, instance_labels, instance_mask)) as scope:
-        assertions = [tf.assert_greater_equal(tf.reduce_max(instance_labels), 256)]
-        with tf.control_dependencies(assertions):
+        label_assertions = [tf.assert_greater_equal(tf.reduce_max(instance_labels), 256)]
+        with tf.control_dependencies(label_assertions):
             embeddings.get_shape()[0:2].assert_is_compatible_with(instance_labels.get_shape())
             instance_labels.get_shape().assert_is_compatible_with(instance_mask.get_shape())
 
@@ -85,20 +86,24 @@ def spectral_loss(
                     semantic_onehot = tf.one_hot(semantic_labels, MAX_N_SEMANTIC_CLASSES)  # batch_size x subsample x N_SEMANTIC_CLASSES
                     semantic_counts = tf.reduce_sum(semantic_onehot, axis=1,
                                                     keepdims=True)  # batch_size x 1 x N_SEMANTIC_CLASSES
-                    inverse_semantic_prevalence = tf.truediv(1.0, semantic_counts)  # square weights, because n_edges = n_nodes^2
+                    inverse_semantic_prevalence = tf.truediv(1.0, semantic_counts)
                     inverse_semantic_prevalence = tf.where(tf.is_inf(inverse_semantic_prevalence), tf.zeros_like(inverse_semantic_prevalence), inverse_semantic_prevalence)
                     sample_weights = tf.multiply(semantic_onehot, inverse_semantic_prevalence)  # batch_size x subsample x N_SEMANTIC_CLASSES
                     sample_weights = tf.reduce_sum(sample_weights, 2)  # batch_size x subsample
                     sample_weights = tf.multiply(sample_weights, instance_mask)
                     sample_weights = tf.divide(sample_weights, tf.reduce_sum(sample_weights, axis=1, keepdims=True))  # normalize probabilities. may be unnnecessary
                 else:
-                    sample_weights = instance_mask
+                    sample_weights = tf.add(instance_mask, SMALL)
                 subsample = 2 ** subsample_power
                 logprob = tf.log(sample_weights)  # instance_mask*LARGE
                 with tf.device("/cpu:0"):
                     sample_indices = tf.multinomial(logprob, subsample, output_dtype=tf.int32)  # batch_size x subsample
-                instance_labels = batch_gather(instance_labels, sample_indices)  # batch_size x subsample
-                embeddings = batch_gather(embeddings, sample_indices)  # batch_size x subsample x embedding_dim
+                # Check none of indices are out of bounds. Bug in tensorflow when values are very large or small:
+                # See https://github.com/tensorflow/tensorflow/issues/2774
+                index_assertions = [tf.assert_less(tf.reduce_max(sample_indices), instance_labels.get_shape()[1])]
+                with tf.control_dependencies(index_assertions):
+                    instance_labels = batch_gather(instance_labels, sample_indices)  # batch_size x subsample
+                    embeddings = batch_gather(embeddings, sample_indices)  # batch_size x subsample x embedding_dim
 
             semantic_labels = tf.cast(tf.floor(tf.divide(instance_labels, 1000)),
                                       tf.int32)  # See cityscapesscripts/preparation/json2instanceImg.py
