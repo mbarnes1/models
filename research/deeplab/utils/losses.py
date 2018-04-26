@@ -26,7 +26,7 @@ def spectral_loss(
         spherical_packing_radius=1.0):
     """
     Creates a spectral loss. Modified from tf.losses.softmax_cross_entropy.
-    :param instance_labels:             `[batch_size, num_pixels]` target instance labels, int32 tensor.
+    :param instance_labels:             `[batch_size, num_pixels]` target instance labels, int16 tensor.
     :param embeddings:                  `[batch_size, num_pixels, embedding_dim]` pixel embedding output of network, float tensor.
     :param instance_mask:               '[batch_size, num_pixels]' binary Tensor.
                                              1 = Semantic class of pixel has instances, learn pixel embedding.

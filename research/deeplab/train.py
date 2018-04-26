@@ -229,6 +229,7 @@ def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
             upsample_logits=FLAGS.upsample_logits,
             scope=output)
 
+    # Check if instance labels are being correctly fed into network
     tf.summary.scalar('max_label', tf.reduce_max(samples[common.LABEL]), collections=[tf.GraphKeys.SUMMARIES])
 
     return outputs_to_scales_to_logits
@@ -321,8 +322,8 @@ def main(unused_argv):
         summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
 
         # Add summaries for model variables.
-        for model_var in slim.get_model_variables():
-            summaries.add(tf.summary.histogram(model_var.op.name, model_var))
+        # for model_var in slim.get_model_variables():
+        #     summaries.add(tf.summary.histogram(model_var.op.name, model_var))
 
         # Add summaries for losses.
         for loss in tf.get_collection(tf.GraphKeys.LOSSES, first_clone_scope):
@@ -339,8 +340,8 @@ def main(unused_argv):
             summaries.add(tf.summary.scalar('learning_rate', learning_rate))
 
         startup_delay_steps = FLAGS.task * FLAGS.startup_delay_steps
-        for variable in slim.get_model_variables():
-            summaries.add(tf.summary.histogram(variable.op.name, variable))
+        # for variable in slim.get_model_variables():
+        #     summaries.add(tf.summary.histogram(variable.op.name, variable))
 
         with tf.device(config.variables_device()):
             total_loss, grads_and_vars = model_deploy.optimize_clones(
