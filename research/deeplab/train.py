@@ -367,7 +367,7 @@ def main(unused_argv):
         # Add the summaries from the first clone. These contain the summaries
         # created by model_fn and either optimize_clones() or _gather_clone_loss().
         summaries |= set(
-            tf.get_collection(tf.GraphKeys.SUMMARIES)) #, first_clone_scope))
+            tf.get_collection(tf.GraphKeys.SUMMARIES, first_clone_scope))
 
         # Merge all summaries together.
         summary_op = tf.summary.merge(list(summaries))
