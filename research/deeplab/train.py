@@ -182,6 +182,7 @@ flags.DEFINE_float('packing_radius', 1.0, 'In (0, 1]. Between cluster embeddings
 # Location
 flags.DEFINE_boolean('location', False, 'Add two dimensions to the image in order to take into account the location of each pixel.')
 
+
 def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
     """Builds a clone of DeepLab.
 
@@ -228,7 +229,7 @@ def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
             upsample_logits=FLAGS.upsample_logits,
             scope=output)
 
-    tf.summary.scalar('max_label', tf.reduce_max(samples[common.LABEL]))
+    tf.summary.scalar('max_label', tf.reduce_max(samples[common.LABEL]), collections=[tf.GraphKeys.SUMMARIES])
 
     return outputs_to_scales_to_logits
 
@@ -366,7 +367,7 @@ def main(unused_argv):
         # Add the summaries from the first clone. These contain the summaries
         # created by model_fn and either optimize_clones() or _gather_clone_loss().
         summaries |= set(
-            tf.get_collection(tf.GraphKeys.SUMMARIES, first_clone_scope))
+            tf.get_collection(tf.GraphKeys.SUMMARIES)) #, first_clone_scope))
 
         # Merge all summaries together.
         summary_op = tf.summary.merge(list(summaries))
