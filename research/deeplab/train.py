@@ -228,6 +228,8 @@ def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
             upsample_logits=FLAGS.upsample_logits,
             scope=output)
 
+    tf.summary.scalar('max_label', tf.reduce_max(samples[common.LABEL]))
+
     return outputs_to_scales_to_logits
 
 
