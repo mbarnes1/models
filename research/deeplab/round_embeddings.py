@@ -72,7 +72,8 @@ def single_eval(inputs):
 
     image_name = file_name.rstrip(IMGEND)
     if args.true_semantic:
-        semantic_path = os.path.join(args.semantic_dir, '{}{}'.format(image_name, GTSEMEND))
+        city = image_name.split('_')[0]
+        semantic_path = os.path.join(args.semantic_dir, city, '{}{}'.format(image_name, GTSEMEND))
     else:
         semantic_path = os.path.join(args.semantic_dir, '{}.png'.format(image_name))
     embedding_path = os.path.join(args.emb_dir, '{}{}'.format(image_name, EMBEND))
