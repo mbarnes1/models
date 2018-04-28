@@ -80,12 +80,17 @@ flags.DEFINE_integer('max_number_of_evaluations', 0,
                      'Maximum number of eval iterations. Will loop '
                      'indefinitely upon nonpositive values.')
 
+# Spectral instance segmentation
+flags.DEFINE_boolean('spectral', False,
+                     'Spectral instance segmentation evaluation. uint16 labels and only evaluate loss.')
+
 
 def main(unused_argv):
   tf.logging.set_verbosity(tf.logging.INFO)
   # Get dataset-dependent information.
+  label_dtype = tf.uint16 if FLAGS.spectral else tf.uint8
   dataset = segmentation_dataset.get_dataset(
-      FLAGS.dataset, FLAGS.eval_split, dataset_dir=FLAGS.dataset_dir)
+      FLAGS.dataset, FLAGS.eval_split, dataset_dir=FLAGS.dataset_dir, label_dtype=label_dtype)
 
   tf.gfile.MakeDirs(FLAGS.eval_logdir)
   tf.logging.info('Evaluating on %s set', FLAGS.eval_split)
