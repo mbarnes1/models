@@ -86,12 +86,17 @@ flags.DEFINE_enum('colormap_type', 'pascal', ['pascal', 'cityscapes'],
 flags.DEFINE_boolean('also_save_raw_predictions', False,
                      'Also save raw predictions.')
 
-flags.DEFINE_boolean('save_raw_logits', False,
-                     'Save the raw logits to npy binary file. Do not save any raw predictions or any image files.')
-
 flags.DEFINE_integer('max_number_of_iterations', 0,
                      'Maximum number of visualization iterations. Will loop '
                      'indefinitely upon nonpositive values.')
+
+# Spectral instance segmentation options
+flags.DEFINE_boolean('instance', False,
+                     'Expect instance labels dataset, which have type uint16 instead of uint8.')
+
+flags.DEFINE_boolean('save_raw_logits', False,
+                     'Save the raw logits to npy binary file. Do not save any raw predictions or any image files.')
+
 
 # The folder where semantic segmentation predictions are saved.
 _SEMANTIC_PREDICTION_SAVE_FOLDER = 'segmentation_results'
@@ -197,8 +202,9 @@ def _process_batch(sess, original_images, semantic_predictions, image_names,
 def main(unused_argv):
     tf.logging.set_verbosity(tf.logging.INFO)
     # Get dataset-dependent information.
+    label_dtype = tf.uint16 if FLAGS.instance else tf.uint8
     dataset = segmentation_dataset.get_dataset(
-        FLAGS.dataset, FLAGS.vis_split, dataset_dir=FLAGS.dataset_dir)
+        FLAGS.dataset, FLAGS.vis_split, dataset_dir=FLAGS.dataset_dir, label_dtype=label_dtype)
     train_id_to_eval_id = None
     if dataset.name == segmentation_dataset.get_cityscapes_dataset_name():
         tf.logging.info('Cityscapes requires converting train_id to eval_id.')
