@@ -143,6 +143,7 @@ def spectral_loss_fast_grad(
         no_semantic_blocking=False,
         normalize=False,
         rebalance_classes=False,
+        spherical_packing_radius=1.0,
         no_decorator=False):
     """
     Same as spectral_loss, but using numerical tricks for computing the full gradient (no subsampling).
@@ -158,9 +159,11 @@ def spectral_loss_fast_grad(
     if rebalance_classes is not False:
         raise NotImplementedError('Class rebalancing not allowed (yet)')
     if normalize is not False:
-        raise NotImplementedError('Normalization is not supported with custom gradient.')
+        raise NotImplementedError('Normalization is not supported with fast gradient.')
     if instance_mask is not None:
         raise NotImplementedError('Instance masks are not allowed (yet)')
+    if spherical_packing_radius != 1.0:
+        raise NotImplementedError('Spherical packing is not supported with fast gradient.')
     spherical_packing_radius = 1.0  # spherical packing not allowed with gradient numerical tricks
     loss = spectral_loss(
         instance_labels,
