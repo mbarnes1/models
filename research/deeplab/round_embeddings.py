@@ -80,7 +80,8 @@ def single_eval(inputs):
     gt_instance_path = os.path.join(dir_name, file_name)
     pred_path, img_path, num_instances = round_embedding(embedding_path, semantic_path, args.round_dir, image_name,
                                                          mean_shift_iterations=args.mean_shift_iterations,
-                                                         packing_radius=args.packing_radius)
+                                                         packing_radius=args.packing_radius,
+                                                         no_semantic_blocking=args.no_semantic_blocking)
 
     # Individual results
     #results_dict = evaluate_img_lists([pred_path], [gt_instance_path], args.round_dir)
@@ -89,7 +90,8 @@ def single_eval(inputs):
     return pred_path, gt_instance_path, num_instances
 
 
-def round_embedding(embedding_path, semantic_path, results_dir, image_name, mean_shift_iterations=1, packing_radius=1.):
+def round_embedding(embedding_path, semantic_path, results_dir, image_name, mean_shift_iterations=1, packing_radius=1.,
+                    no_semantic_blocking=False):
     """
 
     :param embedding_path:         Path to predicted pixel embedding file.
@@ -98,6 +100,7 @@ def round_embedding(embedding_path, semantic_path, results_dir, image_name, mean
     :param image_name:             Name of this image.
     :param mean_shift_iterations:  Perform this many mean shift iterations during KwikCluster
     :param packing_radius:         Spherical packing radius used in training.
+    :param no_semantic_blocking:   Only cluster within (predicted) semantic classes.
     :return pred_path:             Path to prediction TXT image.
     :return img_path:              Path to prediction PNG image.
     """
@@ -110,7 +113,8 @@ def round_embedding(embedding_path, semantic_path, results_dir, image_name, mean
     if semantic_labels.shape != (h, w):
         raise ValueError('Prediction and Semantic label shapes {} and {} do not match'.format((h, w),
                                                                                               semantic_labels.shape))
-    pred_labels = kwik_cluster(np.reshape(embeddings, [-1, d]), cost_function, blocks=np.reshape(semantic_labels, [-1]),
+    blocks = None if no_semantic_blocking else np.reshape(semantic_labels, [-1])
+    pred_labels = kwik_cluster(np.reshape(embeddings, [-1, d]), cost_function, blocks=blocks,
                                mean_shift_iterations=mean_shift_iterations)
     pred_labels = np.reshape(pred_labels, [h, w])
 
@@ -234,6 +238,10 @@ if __name__ == '__main__':
 
     parser.add_argument("--mean_shift_iterations", default=1, type=int,
                         help='Perform this many iterations of mean shift during KwikCluster.')
+
+    parser.add_argument("--no_semantic_blocking", action='store_true', default=False,
+                        help='Only cluster within (predicted) semantic classes. Choice depends on how embeddings'
+                             'were trained.')
 
     args = parser.parse_args()
 

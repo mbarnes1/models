@@ -52,6 +52,12 @@ class TestEmbeddings(unittest.TestCase):
         results_dict = evaluate_img_lists([pred_path], [gt_instance_path], results_dir)
         self.assertEqual(results_dict['averages']['allAp'], 1.0)
 
+        pred_path, _, num_clusters = round_embedding(embedding_path, semantic_path, results_dir, image_name,
+                                                     no_semantic_blocking=True)
+        self.assertEqual(num_clusters, 19)
+        results_dict = evaluate_img_lists([pred_path], [gt_instance_path], results_dir)
+        self.assertEqual(results_dict['averages']['allAp'], 1.0)
+
 
 def make_perfect_embedding(input_file_path, output_file_path):
     """
