@@ -1,4 +1,5 @@
 from __future__ import division
+import numpy as np
 import tensorflow as tf
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops
@@ -62,74 +63,147 @@ def spectral_loss(
     if embeddings is None:
         raise ValueError("embeddings must not be None.")
     if instance_mask is None:
-        raise ValueError("instance_mask must not be None.")  # TODO: Allow None, and set to no mask.
-    
+        instance_mask = tf.ones(instance_labels.shape)
+
     with ops.name_scope(scope, "spectral_loss", (embeddings, instance_labels, instance_mask)) as scope:
-        label_assertions = [tf.assert_greater_equal(tf.reduce_max(instance_labels), 0)]
-        with tf.control_dependencies(label_assertions):
-            embeddings.get_shape()[0:2].assert_is_compatible_with(instance_labels.get_shape())
-            instance_labels.get_shape().assert_is_compatible_with(instance_mask.get_shape())
+        embeddings.get_shape()[0:2].assert_is_compatible_with(instance_labels.get_shape())
+        instance_labels.get_shape().assert_is_compatible_with(instance_mask.get_shape())
 
-            if normalize:
-                embeddings = tf.nn.l2_normalize(embeddings, axis=2)
+        if normalize:
+            embeddings = tf.nn.l2_normalize(embeddings, axis=2)
 
-            # Subsample pixels which are not masked (i.e. belong to a semantic class with instances)
-            instance_mask = math_ops.cast(instance_mask, dtypes.float32)  # tf.multinomial only accepts float probabilities
+        # Subsample pixels which are not masked (i.e. belong to a semantic class with instances)
+        instance_mask = math_ops.cast(instance_mask, dtypes.float32)  # tf.multinomial only accepts float probabilities
 
-            # Rebalance semantic classes
-            # probs should be inverse semantic prevalences. so classes with half as many pixels will have twice the prob
+        # Rebalance semantic classes
+        # probs should be inverse semantic prevalences. so classes with half as many pixels will have twice the prob
 
-            if subsample_power is not None:
-                if rebalance_classes:
-                    print('Rebalancing semantic classes')
-                    semantic_labels = tf.cast(tf.floor(tf.divide(instance_labels, 1000)), tf.int32)  # See cityscapesscripts/preparation/json2instanceImg.py
-                    semantic_onehot = tf.one_hot(semantic_labels, MAX_N_SEMANTIC_CLASSES)  # batch_size x subsample x N_SEMANTIC_CLASSES
-                    semantic_counts = tf.reduce_sum(semantic_onehot, axis=1,
-                                                    keepdims=True)  # batch_size x 1 x N_SEMANTIC_CLASSES
-                    inverse_semantic_prevalence = tf.truediv(1.0, semantic_counts)
-                    inverse_semantic_prevalence = tf.where(tf.is_inf(inverse_semantic_prevalence), tf.zeros_like(inverse_semantic_prevalence), inverse_semantic_prevalence)
-                    sample_weights = tf.multiply(semantic_onehot, inverse_semantic_prevalence)  # batch_size x subsample x N_SEMANTIC_CLASSES
-                    sample_weights = tf.reduce_sum(sample_weights, 2)  # batch_size x subsample
-                    sample_weights = tf.multiply(sample_weights, instance_mask)
-                    sample_weights = tf.divide(sample_weights, tf.reduce_sum(sample_weights, axis=1, keepdims=True))  # normalize probabilities. may be unnnecessary
-                else:
-                    sample_weights = tf.add(instance_mask, SMALL)
-                subsample = 2 ** subsample_power
-                logprob = tf.log(sample_weights)  # instance_mask*LARGE
-                with tf.device("/cpu:0"):
-                    sample_indices = tf.multinomial(logprob, subsample, output_dtype=tf.int32)  # batch_size x subsample
-                # Check none of indices are out of bounds. Bug in tensorflow when values are very large or small:
-                # See https://github.com/tensorflow/tensorflow/issues/2774
-                index_assertions = [tf.assert_less(tf.reduce_max(sample_indices), instance_labels.get_shape()[1])]
-                with tf.control_dependencies(index_assertions):
-                    instance_labels = batch_gather(instance_labels, sample_indices)  # batch_size x subsample
-                    embeddings = batch_gather(embeddings, sample_indices)  # batch_size x subsample x embedding_dim
-
-            semantic_labels = tf.cast(tf.floor(tf.divide(instance_labels, 1000)),
-                                      tf.int32)  # See cityscapesscripts/preparation/json2instanceImg.py
-            if not no_semantic_blocking:
-                print("Computing spectral loss only within semantic classes.")
-                sample_weights = labels_to_adjacency(semantic_labels)  # batch_size x subsample x subsample
+        if subsample_power is not None:
+            if rebalance_classes:
+                print('Rebalancing semantic classes')
+                semantic_labels = tf.cast(tf.floor(tf.divide(instance_labels, 1000)), tf.int32)  # See cityscapesscripts/preparation/json2instanceImg.py
+                semantic_onehot = tf.one_hot(semantic_labels, MAX_N_SEMANTIC_CLASSES)  # batch_size x subsample x N_SEMANTIC_CLASSES
+                semantic_counts = tf.reduce_sum(semantic_onehot, axis=1,
+                                                keepdims=True)  # batch_size x 1 x N_SEMANTIC_CLASSES
+                inverse_semantic_prevalence = tf.truediv(1.0, semantic_counts)
+                inverse_semantic_prevalence = tf.where(tf.is_inf(inverse_semantic_prevalence), tf.zeros_like(inverse_semantic_prevalence), inverse_semantic_prevalence)
+                sample_weights = tf.multiply(semantic_onehot, inverse_semantic_prevalence)  # batch_size x subsample x N_SEMANTIC_CLASSES
+                sample_weights = tf.reduce_sum(sample_weights, 2)  # batch_size x subsample
+                sample_weights = tf.multiply(sample_weights, instance_mask)
+                sample_weights = tf.divide(sample_weights, tf.reduce_sum(sample_weights, axis=1, keepdims=True))  # normalize probabilities. may be unnnecessary
             else:
-                sample_weights = 1.0
+                sample_weights = tf.add(instance_mask, SMALL)
+            subsample = 2 ** subsample_power
+            logprob = tf.log(sample_weights)  # instance_mask*LARGE
+            with tf.device("/cpu:0"):
+                sample_indices = tf.multinomial(logprob, subsample, output_dtype=tf.int32)  # batch_size x subsample
+            # Check none of indices are out of bounds. Bug in tensorflow when values are very large or small:
+            # See https://github.com/tensorflow/tensorflow/issues/2774
+            index_assertions = [tf.assert_less(tf.reduce_max(sample_indices), instance_labels.get_shape()[1])]
+            with tf.control_dependencies(index_assertions):
+                instance_labels = batch_gather(instance_labels, sample_indices)  # batch_size x subsample
+                embeddings = batch_gather(embeddings, sample_indices)  # batch_size x subsample x embedding_dim
 
-            # Compute A
-            A = labels_to_adjacency(instance_labels)  # batch_size x subsample x subsample
+        semantic_labels = tf.cast(tf.floor(tf.divide(instance_labels, 1000)),
+                                  tf.int32)  # See cityscapesscripts/preparation/json2instanceImg.py
+        if not no_semantic_blocking:
+            print("Computing spectral loss only within semantic classes.")
+            sample_weights = labels_to_adjacency(semantic_labels)  # batch_size x subsample x subsample
+        else:
+            sample_weights = 1.0
 
-            # Compute VV^T
-            A_predicted = tf.matmul(embeddings, tf.transpose(embeddings, [0, 2, 1]))  # batch_size x subsample x subsample
+        # Compute A
+        A = labels_to_adjacency(instance_labels)  # batch_size x subsample x subsample
 
-            # Compute loss
-            between_cluster_mask = tf.cast(~A, A_predicted.dtype)
-            A_float32 = tf.cast(A, A_predicted.dtype)
-            packed_error_between_cluster = \
-                tf.maximum(tf.multiply(between_cluster_mask,
-                                       (A_predicted - 1.0 + spherical_packing_radius)/spherical_packing_radius), 0.0)
-            error_within_cluster = tf.multiply(A_float32, A_float32 - A_predicted)
-            error = packed_error_between_cluster + error_within_cluster
-            loss = tf.losses.mean_squared_error(error, tf.zeros_like(error), scope=scope, loss_collection=loss_collection,
-                                                reduction=reduction, weights=sample_weights)
-            return loss
+        # Compute VV^T
+        A_predicted = tf.matmul(embeddings, tf.transpose(embeddings, [0, 2, 1]))  # batch_size x subsample x subsample
+
+        # Compute loss
+        between_cluster_mask = tf.cast(~A, A_predicted.dtype)
+        A_float32 = tf.cast(A, A_predicted.dtype)
+        packed_error_between_cluster = \
+            tf.maximum(tf.multiply(between_cluster_mask,
+                                   (A_predicted - 1.0 + spherical_packing_radius)/spherical_packing_radius), 0.0)
+        error_within_cluster = tf.multiply(A_float32, A_float32 - A_predicted)
+        error = packed_error_between_cluster + error_within_cluster
+        loss = tf.losses.mean_squared_error(error, tf.zeros_like(error), scope=scope, loss_collection=loss_collection,
+                                            reduction=reduction, weights=sample_weights)
+        return loss
+
+
+@tf_export("losses.spectral_fast_grad")
+def spectral_loss_fast_grad(
+        instance_labels,
+        embeddings,
+        instance_mask=None,
+        scope=None,
+        loss_collection=ops.GraphKeys.LOSSES,
+        reduction=Reduction.SUM_BY_NONZERO_WEIGHTS,
+        subsample_power=12,
+        no_semantic_blocking=False,
+        normalize=True,
+        rebalance_classes=False,
+        no_decorator=False):
+    """
+    Same as spectral_loss, but using numerical tricks for computing the full gradient (no subsampling).
+    See spectral_loss for definitions.
+    Subsample power is only used in forward call.
+    @tf.custom_gradient decorator does not support keyword arguments.
+    :param no_decorator: Do not use the tf.custom_gradient decorator. Useful for unit testing.
+    """
+    if no_semantic_blocking is not True:
+        raise NotImplementedError('Semantic blocking allowed (yet)')
+    if rebalance_classes is not False:
+        raise NotImplementedError('Class rebalancing not allowed (yet)')
+    if normalize is not False:
+        raise NotImplementedError('Normalization is not supported with custom gradient.')
+    if instance_mask is not None:
+        raise NotImplementedError('Instance masks are not allowed (yet)')
+    spherical_packing_radius = 1.0  # spherical packing not allowed with gradient numerical tricks
+    loss = spectral_loss(
+        instance_labels,
+        embeddings,
+        instance_mask,
+        scope=scope,
+        loss_collection=loss_collection,
+        reduction=reduction,
+        subsample_power=subsample_power,
+        no_semantic_blocking=no_semantic_blocking,
+        normalize=normalize,
+        rebalance_classes=rebalance_classes,
+        spherical_packing_radius=spherical_packing_radius)
+
+    def grad(dy):
+        n_batch, n_pixels, emb_dim = embeddings.shape
+        unique_labels, labels_sequential = tf.unique(tf.reshape(instance_labels, [-1]))
+        labels_sequential = tf.reshape(labels_sequential, tf.shape(instance_labels))
+        # unique_labels: Vector containing unique labels in instance_labels
+        # labels_sequential: n_batch x n_pixels containing remapped labels
+        onehot = tf.one_hot(labels_sequential, tf.reduce_max(labels_sequential) + 1)
+        cluster_embedding_sums = tf.matmul(onehot, embeddings, transpose_a=True)  # n_labels x embedding_dim
+        # For each pixel in labels_sequential, select the cluster_embedding_sum row according to value in labels_sequential
+        term1 = batch_gather(cluster_embedding_sums, labels_sequential)  # n_batch x n_pixels x embedding_dim
+
+        term2 = tf.matmul(embeddings, embeddings, transpose_a=True)  # batch_size x embedding_dim x embedding_dim
+        term2 = tf.matmul(embeddings, term2)  # batch_size x n_pixels x embedding_dim
+
+        gradient = 4*(term2 - term1) / tf.cast(n_pixels * emb_dim, term1.dtype)
+        return tf.multiply(gradient, dy)  # I think? or tf.matmul
+
+    if no_decorator:
+        return loss, grad
+    else:
+        return _custom_grad(instance_labels, embeddings, loss)
+
+
+@tf.custom_gradient
+def _custom_grad(
+        loss,
+        grad):
+    """
+    Use the @tf.custom_gradient decorator.
+    """
+    return loss, grad
 
 
 def batch_gather(params, indices):

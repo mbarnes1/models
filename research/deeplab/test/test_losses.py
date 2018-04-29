@@ -1,5 +1,5 @@
 from __future__ import division
-from deeplab.utils.losses import batch_gather, _tile_along_new_axis, labels_to_adjacency, spectral_loss
+from deeplab.utils.losses import batch_gather, _tile_along_new_axis, labels_to_adjacency, spectral_loss, spectral_loss_fast_grad
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 import tensorflow as tf
@@ -123,14 +123,29 @@ class MyTestCase(tf.test.TestCase):
                                  no_semantic_blocking=False, rebalance_classes=True)
             self.assertAlmostEqual(loss.eval(), 1/3*1/2, places=1)
 
-    def test_assertions(self):
+    def test_custom_gradient(self):
         with self.test_session():
-            labels = [[0, 1, 1, 2, 3], [4, 1, 2, 3, 6]]
-            labels_tensor = tf.convert_to_tensor(labels)  # 2 x 5
-            embeddings = tf.one_hot(labels_tensor, 10)  # 2 x 5 x 2001
-            instance_mask = tf.ones((2, 5))
-            loss = spectral_loss(labels_tensor, embeddings, instance_mask)
-            self.assertRaises(tf.errors.InvalidArgumentError, loss.eval)
+            labels_true = tf.convert_to_tensor([[0, 1, 1, 2, 3], [4, 1, 2, 2, 6]])
+            labels_pred = tf.convert_to_tensor([[0, 1, 1, 2, 2], [4, 1, 2, 3, 6]])  # 2 FN, 2 FP out of 50 edges
+            embeddings = tf.one_hot(labels_pred, 10)
+            instance_mask = tf.ones(labels_true.shape)
+            loss = spectral_loss(labels_true, embeddings, instance_mask, subsample_power=None, normalize=False,
+                                 no_semantic_blocking=True)
+            grad = tf.gradients(loss, embeddings)[0]
+            loss = loss.eval()
+            self.assertAlmostEqual(loss, 4/50)
+
+            _, custom_grad_function = spectral_loss_fast_grad(labels_true,
+                                                              embeddings,
+                                                              subsample_power=None,
+                                                              normalize=False,
+                                                              no_semantic_blocking=True,
+                                                              no_decorator=True)
+            custom_grad = custom_grad_function(tf.ones(embeddings.shape))
+            grad_eval = grad.eval()
+            custom_grad_eval = custom_grad.eval()
+
+            np.testing.assert_array_almost_equal(grad_eval, custom_grad_eval)
 
 
 if __name__ == '__main__':

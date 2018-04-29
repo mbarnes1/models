@@ -179,8 +179,11 @@ flags.DEFINE_float('packing_radius', 1.0, 'In (0, 1]. Between cluster embeddings
                                           'packing (perfect cluster embeddings are orthogonal). Values closer to 0 '
                                           'correspond to more spherical packing.')
 
+flags.DEFINE_boolean('fast_grad', False, 'Use fast gradient trick for computing spectral loss gradient.')
+
 # Location
-flags.DEFINE_boolean('location', False, 'Add two dimensions to the image in order to take into account the location of each pixel.')
+flags.DEFINE_boolean('location', False, 'Add two dimensions to the image in order to take into account the location of '
+                                        'each pixel.')
 
 
 def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
