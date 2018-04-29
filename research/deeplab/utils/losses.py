@@ -178,6 +178,20 @@ def spectral_loss_fast_grad(
         rebalance_classes=rebalance_classes,
         spherical_packing_radius=spherical_packing_radius)
 
+    if no_decorator:
+        return _custom_grad_no_decorator(instance_labels, embeddings, loss)
+    else:
+        return _custom_grad(instance_labels, embeddings, loss)
+
+
+@tf.custom_gradient
+def _custom_grad(
+        instance_labels,
+        embeddings,
+        loss):
+    """
+    Use the @tf.custom_gradient decorator.
+    """
     def grad(dy):
         n_batch, n_pixels, emb_dim = embeddings.shape
         unique_labels, labels_sequential = tf.unique(tf.reshape(instance_labels, [-1]))
@@ -195,19 +209,33 @@ def spectral_loss_fast_grad(
         gradient = 4*(term2 - term1) / tf.cast(n_pixels * emb_dim, term1.dtype)
         return tf.multiply(gradient, dy)  # I think? or tf.matmul
 
-    if no_decorator:
-        return loss, grad
-    else:
-        return _custom_grad(loss, grad)
+    return loss, grad
 
-
-@tf.custom_gradient
-def _custom_grad(
-        loss,
-        grad):
+#TODO: Better way to make optional decorator
+def _custom_grad_no_decorator(
+        instance_labels,
+        embeddings,
+        loss):
     """
     Use the @tf.custom_gradient decorator.
     """
+    def grad(dy):
+        n_batch, n_pixels, emb_dim = embeddings.shape
+        unique_labels, labels_sequential = tf.unique(tf.reshape(instance_labels, [-1]))
+        labels_sequential = tf.reshape(labels_sequential, tf.shape(instance_labels))
+        # unique_labels: Vector containing unique labels in instance_labels
+        # labels_sequential: n_batch x n_pixels containing remapped labels
+        onehot = tf.one_hot(labels_sequential, tf.reduce_max(labels_sequential) + 1)
+        cluster_embedding_sums = tf.matmul(onehot, embeddings, transpose_a=True)  # n_labels x embedding_dim
+        # For each pixel in labels_sequential, select the cluster_embedding_sum row according to value in labels_sequential
+        term1 = batch_gather(cluster_embedding_sums, labels_sequential)  # n_batch x n_pixels x embedding_dim
+
+        term2 = tf.matmul(embeddings, embeddings, transpose_a=True)  # batch_size x embedding_dim x embedding_dim
+        term2 = tf.matmul(embeddings, term2)  # batch_size x n_pixels x embedding_dim
+
+        gradient = 4*(term2 - term1) / tf.cast(n_pixels * emb_dim, term1.dtype)
+        return tf.multiply(gradient, dy)  # I think? or tf.matmul
+
     return loss, grad
 
 
