@@ -134,7 +134,7 @@ def spectral_loss_fast_grad(
         scope=None,
         loss_collection=ops.GraphKeys.LOSSES,
         reduction=Reduction.SUM_BY_NONZERO_WEIGHTS,
-        subsample_power=12,
+        subsample_power=9,
         no_semantic_blocking=False,
         rebalance_classes=False,
         spherical_packing_radius=1.0,
