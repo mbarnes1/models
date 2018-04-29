@@ -129,7 +129,7 @@ class MyTestCase(tf.test.TestCase):
             labels_pred = tf.convert_to_tensor([[0, 1, 1, 2, 2], [4, 1, 2, 3, 6]])  # 2 FN, 2 FP out of 50 edges
             embeddings = tf.one_hot(labels_pred, 10)
             instance_mask = tf.ones(labels_true.shape)
-            loss = spectral_loss(labels_true, embeddings, instance_mask, subsample_power=None, normalize=False,
+            loss = spectral_loss(labels_true, embeddings, instance_mask, subsample_power=None,
                                  no_semantic_blocking=True)
             grad = tf.gradients(loss, embeddings)[0]
             loss = loss.eval()
@@ -138,7 +138,6 @@ class MyTestCase(tf.test.TestCase):
             _, custom_grad_function = spectral_loss_fast_grad(labels_true,
                                                               embeddings,
                                                               subsample_power=None,
-                                                              normalize=False,
                                                               no_semantic_blocking=True,
                                                               no_decorator=True)
             custom_grad = custom_grad_function(tf.ones(embeddings.shape))

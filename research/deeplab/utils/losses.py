@@ -22,7 +22,6 @@ def spectral_loss(
         reduction=Reduction.SUM_BY_NONZERO_WEIGHTS,
         subsample_power=12,
         no_semantic_blocking=False,
-        normalize=True,
         rebalance_classes=False,
         spherical_packing_radius=1.0):
     """
@@ -39,7 +38,6 @@ def spectral_loss(
                                         Must be power of 2 to avoid bias in tensorflow random sampling.
                                         If None, do not subsample.
     :param no_semantic_blocking:        If False, compute the loss for each semantic class independently.
-    :param normalize:                   Normalize pixel embeddings to have l2 norm of 1.
     :param rebalance_classes:           If True, reweight semantic classes to have equal weight in loss function.
                                         Only applies if no_semantic_blocking=False
     :param spherical_packing_radius:    In (0, 1]. Between cluster embeddings have 0 loss when their inner products are
@@ -68,9 +66,6 @@ def spectral_loss(
     with ops.name_scope(scope, "spectral_loss", (embeddings, instance_labels, instance_mask)) as scope:
         embeddings.get_shape()[0:2].assert_is_compatible_with(instance_labels.get_shape())
         instance_labels.get_shape().assert_is_compatible_with(instance_mask.get_shape())
-
-        if normalize:
-            embeddings = tf.nn.l2_normalize(embeddings, axis=2)
 
         # Subsample pixels which are not masked (i.e. belong to a semantic class with instances)
         instance_mask = math_ops.cast(instance_mask, dtypes.float32)  # tf.multinomial only accepts float probabilities
@@ -141,7 +136,6 @@ def spectral_loss_fast_grad(
         reduction=Reduction.SUM_BY_NONZERO_WEIGHTS,
         subsample_power=12,
         no_semantic_blocking=False,
-        normalize=False,
         rebalance_classes=False,
         spherical_packing_radius=1.0,
         no_decorator=False):
@@ -158,8 +152,6 @@ def spectral_loss_fast_grad(
         raise NotImplementedError('Semantic blocking allowed (yet)')
     if rebalance_classes is not False:
         raise NotImplementedError('Class rebalancing not allowed (yet)')
-    if normalize is not False:
-        raise NotImplementedError('Normalization is not supported with fast gradient.')
     if instance_mask is not None:
         raise NotImplementedError('Instance masks are not allowed (yet)')
     if spherical_packing_radius != 1.0:
@@ -174,7 +166,6 @@ def spectral_loss_fast_grad(
         reduction=reduction,
         subsample_power=subsample_power,
         no_semantic_blocking=no_semantic_blocking,
-        normalize=normalize,
         rebalance_classes=rebalance_classes,
         spherical_packing_radius=spherical_packing_radius)
 

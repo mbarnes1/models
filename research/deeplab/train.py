@@ -181,6 +181,8 @@ flags.DEFINE_float('packing_radius', 1.0, 'In (0, 1]. Between cluster embeddings
 
 flags.DEFINE_boolean('fast_grad', False, 'Use fast gradient trick for computing spectral loss gradient.')
 
+flags.DEFINE_boolean('no_normalize', False, 'Do not normalize pixel embedding vectors to unit norm.')
+
 # Location
 flags.DEFINE_boolean('location', False, 'Add two dimensions to the image in order to take into account the location of '
                                         'each pixel.')

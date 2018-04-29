@@ -68,6 +68,9 @@ def add_spectral_loss_for_each_scale(scales_to_logits,
             not_ignore_mask = tf.reshape(not_ignore_mask, shape=[batch_size, -1])  # batch x npixels
         scaled_labels = tf.reshape(scaled_labels, shape=[batch_size, -1])  # batch x npixels
         logits = tf.reshape(logits, shape=[batch_size, -1, embedding_dim])  # batch x npixels x embedding dim
+        if not flags.no_normalize:
+            print('Normalizing embedding vectors to unit norm.')
+            logits = tf.nn.l2_normalize(logits, axis=2)
         loss_function = spectral_loss_fast_grad if flags.fast_grad else spectral_loss
         loss_function(scaled_labels, logits, not_ignore_mask, scope=loss_scope,
                       no_semantic_blocking=flags.no_semantic_blocking, rebalance_classes=flags.rebalance_classes,
