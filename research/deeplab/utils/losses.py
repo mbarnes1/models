@@ -198,7 +198,7 @@ def spectral_loss_fast_grad(
     if no_decorator:
         return loss, grad
     else:
-        return _custom_grad(instance_labels, embeddings, loss)
+        return _custom_grad(loss, grad)
 
 
 @tf.custom_gradient
