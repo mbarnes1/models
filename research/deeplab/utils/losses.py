@@ -141,7 +141,7 @@ def spectral_loss_fast_grad(
         reduction=Reduction.SUM_BY_NONZERO_WEIGHTS,
         subsample_power=12,
         no_semantic_blocking=False,
-        normalize=True,
+        normalize=False,
         rebalance_classes=False,
         no_decorator=False):
     """
@@ -151,6 +151,8 @@ def spectral_loss_fast_grad(
     @tf.custom_gradient decorator does not support keyword arguments.
     :param no_decorator: Do not use the tf.custom_gradient decorator. Useful for unit testing.
     """
+    print('Using fast spectral gradient trick.')
+
     if no_semantic_blocking is not True:
         raise NotImplementedError('Semantic blocking allowed (yet)')
     if rebalance_classes is not False:
