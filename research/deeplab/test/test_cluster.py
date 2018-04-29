@@ -42,9 +42,13 @@ class TestEmbeddings(unittest.TestCase):
         image_name = 'frankfurt_000000_000294'
         results_dir = 'data/roundings/'
 
+        if not os.path.exists(results_dir):
+            os.mkdir(results_dir)
+
         make_perfect_embedding(gt_instance_path, embedding_path)
 
-        pred_path, _, _ = round_embedding(embedding_path, semantic_path, results_dir, image_name)
+        pred_path, _, num_clusters = round_embedding(embedding_path, semantic_path, results_dir, image_name)
+        self.assertEqual(num_clusters, 19)
         results_dict = evaluate_img_lists([pred_path], [gt_instance_path], results_dir)
         self.assertEqual(results_dict['averages']['allAp'], 1.0)
 

@@ -146,9 +146,9 @@ def round_embedding(embedding_path, semantic_path, results_dir, image_name, mean
                     instances_per_semantic[majority_vote_semantic_label] = instance_label * instance_mask.astype('uint8')
                 else:
                     instances_per_semantic[majority_vote_semantic_label] += instance_label * instance_mask.astype('uint8')
-    for semantic_label, instance_labels in instances_per_semantic.iteritems():
+    for semantic_label, instance_label_this_semantic in instances_per_semantic.iteritems():
         output_path = os.path.join(results_dir, '{}_semantic_{}.png'.format(image_name, semantic_label))
-        write_color_img(instance_labels, output_path)
+        write_color_img(instance_label_this_semantic, output_path)
     num_instances = len(instance_labels)
     return pred_path, img_path, num_instances
 
