@@ -170,7 +170,7 @@ flags.DEFINE_integer('num_threads', 1, 'Number of threads during readings.')
 # Spectral
 flags.DEFINE_boolean('spectral', False, 'Use spectral loss to learn pixel instance embedding.')
 
-flags.DEFINE_boolean('no_semantic_blocking', False, 'Only compute spectral loss within semantic classes.')
+flags.DEFINE_boolean('semantic_blocking', False, 'Only compute spectral loss within semantic classes.')
 
 flags.DEFINE_boolean('rebalance_classes', False, 'Rebalance semantic classes during resampling.')
 
@@ -181,7 +181,9 @@ flags.DEFINE_float('packing_radius', 1.0, 'In (0, 1]. Between cluster embeddings
 
 flags.DEFINE_boolean('fast_grad', False, 'Use fast gradient trick for computing spectral loss gradient.')
 
-flags.DEFINE_boolean('no_normalize', False, 'Do not normalize pixel embedding vectors to unit norm.')
+flags.DEFINE_boolean('normalize', True, 'Normalize pixel embedding vectors to unit norm.')
+
+flags.DEFINE_boolean('ignore_label', True, 'Ignore the ignore label when computing spectral loss.')
 
 # Location
 flags.DEFINE_boolean('location', False, 'Add two dimensions to the image in order to take into account the location of '

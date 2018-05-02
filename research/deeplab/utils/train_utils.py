@@ -43,6 +43,9 @@ def add_spectral_loss_for_each_scale(scales_to_logits,
     """
     if labels is None:
         raise ValueError('No label for softmax cross entropy loss.')
+    if flags.ignore_label and (flags.fast_grad or flags.semantic_blocking or flags.rebalance_classes):
+        raise NotImplementedError('Cannot include the ignore_label due to onehot encoding.')
+
     batch_size = labels.shape[0]
 
     print 'Learning with spectral loss.'
@@ -61,19 +64,21 @@ def add_spectral_loss_for_each_scale(scales_to_logits,
             # Label is downsampled to the same size as logits.
             scaled_labels = tf.image.resize_nearest_neighbor(labels, tf.shape(logits)[1:3], align_corners=True)
 
-        if flags.fast_grad:
-            not_ignore_mask = None
-        else:
+        if flags.ignore_label:
+            print('Ignoring the ignore label in loss.')
             not_ignore_mask = tf.not_equal(scaled_labels, ignore_label)  # 2 x h x w x 1 # tf.to_float(tf.not_equal(scaled_labels, ignore_label)) #* loss_weight
             not_ignore_mask = tf.reshape(not_ignore_mask, shape=[batch_size, -1])  # batch x npixels
+        else:
+            print('Including the ignore label in loss.')
+            not_ignore_mask = None
         scaled_labels = tf.reshape(scaled_labels, shape=[batch_size, -1])  # batch x npixels
         logits = tf.reshape(logits, shape=[batch_size, -1, embedding_dim])  # batch x npixels x embedding dim
-        if not flags.no_normalize:
+        if flags.normalize:
             print('Normalizing embedding vectors to unit norm.')
             logits = tf.nn.l2_normalize(logits, axis=2)
         loss_function = spectral_loss_fast_grad if flags.fast_grad else spectral_loss
         loss_function(scaled_labels, logits, not_ignore_mask, scope=loss_scope,
-                      no_semantic_blocking=flags.no_semantic_blocking, rebalance_classes=flags.rebalance_classes,
+                      semantic_blocking=flags.semantic_blocking, rebalance_classes=flags.rebalance_classes,
                       spherical_packing_radius=flags.packing_radius)
 
 

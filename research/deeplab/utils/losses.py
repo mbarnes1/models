@@ -12,6 +12,7 @@ LARGE = 1e8
 MAX_N_SEMANTIC_CLASSES = 21
 SMALL = 1e-12
 
+
 @tf_export("losses.spectral")
 def spectral_loss(
         instance_labels,
@@ -21,7 +22,7 @@ def spectral_loss(
         loss_collection=ops.GraphKeys.LOSSES,
         reduction=Reduction.SUM_BY_NONZERO_WEIGHTS,
         subsample_power=12,
-        no_semantic_blocking=False,
+        semantic_blocking=False,
         rebalance_classes=False,
         spherical_packing_radius=1.0):
     """
@@ -37,9 +38,9 @@ def spectral_loss(
     :param subsample_power:             Uniformly randomly sample 2**subsample_power many pixels per image when computing the loss.
                                         Must be power of 2 to avoid bias in tensorflow random sampling.
                                         If None, do not subsample.
-    :param no_semantic_blocking:        If False, compute the loss for each semantic class independently.
+    :param semantic_blocking:           If True, compute the loss for each semantic class independently.
     :param rebalance_classes:           If True, reweight semantic classes to have equal weight in loss function.
-                                        Only applies if no_semantic_blocking=False
+                                        Only applies if semantic_blocking=True
     :param spherical_packing_radius:    In (0, 1]. Between cluster embeddings have 0 loss when their inner products are
                                         less than (1 - spherical_packing_radius). Value of 1 corresponds to no packing
                                         (perfect cluster embeddings are orthogonal). Values closer to 0 correspond to
@@ -62,6 +63,8 @@ def spectral_loss(
         raise ValueError("embeddings must not be None.")
     if instance_mask is None:
         instance_mask = tf.ones(instance_labels.shape)
+    if subsample_power is None and rebalance_classes:
+        raise NotImplementedError('Rebalancing semantic classes requires sampling.')
 
     with ops.name_scope(scope, "spectral_loss", (embeddings, instance_labels, instance_mask)) as scope:
         embeddings.get_shape()[0:2].assert_is_compatible_with(instance_labels.get_shape())
@@ -99,10 +102,10 @@ def spectral_loss(
                 instance_labels = batch_gather(instance_labels, sample_indices)  # batch_size x subsample
                 embeddings = batch_gather(embeddings, sample_indices)  # batch_size x subsample x embedding_dim
 
-        semantic_labels = tf.cast(tf.floor(tf.divide(instance_labels, 1000)),
-                                  tf.int32)  # See cityscapesscripts/preparation/json2instanceImg.py
-        if not no_semantic_blocking:
+        if semantic_blocking:
             print("Computing spectral loss only within semantic classes.")
+            semantic_labels = tf.cast(tf.floor(tf.divide(instance_labels, 1000)),
+                                      tf.int32)  # See cityscapesscripts/preparation/json2instanceImg.py
             sample_weights = labels_to_adjacency(semantic_labels)  # batch_size x subsample x subsample
         else:
             sample_weights = 1.0
@@ -135,7 +138,7 @@ def spectral_loss_fast_grad(
         loss_collection=ops.GraphKeys.LOSSES,
         reduction=Reduction.SUM_BY_NONZERO_WEIGHTS,
         subsample_power=9,
-        no_semantic_blocking=False,
+        semantic_blocking=False,
         rebalance_classes=False,
         spherical_packing_radius=1.0,
         no_decorator=True):  # TODO: Change this default to false
@@ -148,12 +151,12 @@ def spectral_loss_fast_grad(
     """
     print('Using fast spectral gradient trick.')
 
-    if no_semantic_blocking is not True:
-        raise NotImplementedError('Semantic blocking allowed (yet)')
+    if semantic_blocking is not False:
+        raise NotImplementedError('Semantic blocking allowed in fast grad (yet)')
     if rebalance_classes is not False:
-        raise NotImplementedError('Class rebalancing not allowed (yet)')
+        raise NotImplementedError('Class rebalancing not allowed in fast grad (yet)')
     if instance_mask is not None:
-        raise NotImplementedError('Instance masks are not allowed (yet)')
+        raise NotImplementedError('Instance masks are not allowed in fast grad (yet)')
     if spherical_packing_radius != 1.0:
         raise NotImplementedError('Spherical packing is not supported with fast gradient.')
     spherical_packing_radius = 1.0  # spherical packing not allowed with gradient numerical tricks
@@ -165,7 +168,7 @@ def spectral_loss_fast_grad(
         loss_collection=loss_collection,
         reduction=reduction,
         subsample_power=subsample_power,
-        no_semantic_blocking=no_semantic_blocking,
+        semantic_blocking=semantic_blocking,
         rebalance_classes=rebalance_classes,
         spherical_packing_radius=spherical_packing_radius)
 
@@ -177,7 +180,7 @@ def spectral_loss_fast_grad(
         # TODO: Once TF 1.7 is available everywhere, use the _custom_grad with @tf.custom_gradient
         #return _custom_grad(instance_labels, embeddings, loss)
 
-#
+
 # @tf.custom_gradient
 # def _custom_grad(
 #         instance_labels,

@@ -66,7 +66,7 @@ class MyTestCase(tf.test.TestCase):
             embeddings = tf.one_hot(labels_tensor, 2002)  # 1 x 5 x 2001
             instance_mask = tf.ones((1, 5))
             loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=None,
-                                 no_semantic_blocking=False, rebalance_classes=False)
+                                 semantic_blocking=True, rebalance_classes=False)
             self.assertAlmostEqual(loss.eval(), 0.)
 
             # 1 false positive instance
@@ -75,7 +75,7 @@ class MyTestCase(tf.test.TestCase):
             labels = [[0000, 0000, 1000, 2001, 2000]]
             labels_tensor = tf.convert_to_tensor(labels)  # 1 x 5
             loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=None,
-                                 no_semantic_blocking=False, rebalance_classes=False)
+                                 semantic_blocking=True, rebalance_classes=False)
             self.assertAlmostEqual(loss.eval(), 2.0/9.0)
 
     def test_spectral_loss_semantic_2d(self):
@@ -85,7 +85,7 @@ class MyTestCase(tf.test.TestCase):
             embeddings = tf.one_hot(labels_tensor, 2002)  # 2 x 5 x 2001
             instance_mask = tf.ones((2, 5))
             loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=8,
-                                 no_semantic_blocking=False, rebalance_classes=False)
+                                 semantic_blocking=True, rebalance_classes=False)
             self.assertAlmostEqual(loss.eval(), 0.)
 
     def test_spherical_packing(self):
@@ -100,11 +100,11 @@ class MyTestCase(tf.test.TestCase):
             embeddings = tf.convert_to_tensor(embeddings_array)
             instance_mask = tf.ones((1, 5))
             loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=None,
-                                 no_semantic_blocking=True, rebalance_classes=False)
+                                 semantic_blocking=False, rebalance_classes=False)
             loss_true = (2**0.5/2)**2 * 8/25  # 8 bad edges out of 25
             self.assertAlmostEqual(loss.eval(), loss_true)
             loss = spectral_loss(labels_tensor, embeddings, instance_mask, subsample_power=None,
-                                 no_semantic_blocking=True, rebalance_classes=False, spherical_packing_radius=(1 - 2**0.5/2))
+                                 semantic_blocking=False, rebalance_classes=False, spherical_packing_radius=(1 - 2**0.5/2))
             self.assertAlmostEqual(loss.eval(), 0.0)
 
     def test_rebalance_classes(self):
@@ -120,7 +120,7 @@ class MyTestCase(tf.test.TestCase):
             true_labels_tensor = tf.convert_to_tensor(true_labels)  # 1 x 5
             instance_mask = tf.ones((1, 5))
             loss = spectral_loss(true_labels_tensor, embeddings, instance_mask, subsample_power=11,
-                                 no_semantic_blocking=False, rebalance_classes=True)
+                                 semantic_blocking=True, rebalance_classes=True)
             self.assertAlmostEqual(loss.eval(), 1/3*1/2, places=1)
 
     def test_custom_gradient(self):
@@ -129,8 +129,7 @@ class MyTestCase(tf.test.TestCase):
             labels_pred = tf.convert_to_tensor([[0, 1, 1, 2, 2], [4, 1, 2, 3, 6]])  # 2 FN, 2 FP out of 50 edges
             embeddings = tf.one_hot(labels_pred, 10)
             instance_mask = tf.ones(labels_true.shape)
-            loss = spectral_loss(labels_true, embeddings, instance_mask, subsample_power=None,
-                                 no_semantic_blocking=True)
+            loss = spectral_loss(labels_true, embeddings, instance_mask, subsample_power=None, semantic_blocking=False)
             grad = tf.gradients(loss, embeddings)[0]
             loss = loss.eval()
             self.assertAlmostEqual(loss, 4/50)
@@ -138,7 +137,7 @@ class MyTestCase(tf.test.TestCase):
             _, custom_grad_function = spectral_loss_fast_grad(labels_true,
                                                               embeddings,
                                                               subsample_power=None,
-                                                              no_semantic_blocking=True,
+                                                              semantic_blocking=False,
                                                               no_decorator=True)
             custom_grad = custom_grad_function(tf.ones(embeddings.shape))
             grad_eval = grad.eval()
