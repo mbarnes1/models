@@ -52,7 +52,7 @@ def online_eval(args):
 
     while n_dir_processed <= args.max_number_of_iterations:
         unprocessed_dir = get_unprocessed_emb_subdir(args.emb_dir, processed_dir=processed_directories)
-        while len(unprocessed_dir) > 0:
+        if len(unprocessed_dir) > 0:
             print('{} unprocessed directories'.format(len(unprocessed_dir)))
             train_iteration = int(unprocessed_dir[0])
             emb_subdir = os.path.join(args.emb_dir, str(train_iteration))
