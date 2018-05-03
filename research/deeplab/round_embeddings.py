@@ -45,7 +45,8 @@ def online_eval(args):
     writer = SummaryWriter(log_dir=args.round_dir)
 
     while n_dir_processed <= args.max_number_of_iterations:
-        unprocessed_dir = sorted(list(set(os.listdir(args.emb_dir)).difference(processed_directories)))
+        unprocessed_dir = [d for d in os.listdir(args.emb_dir) if d.isdigit()]
+        unprocessed_dir = sorted(list(set(unprocessed_dir).difference(processed_directories)))
         if len(unprocessed_dir) > 0:
             print('{} unprocessed directories'.format(len(unprocessed_dir)))
             train_iteration = int(unprocessed_dir[0])
