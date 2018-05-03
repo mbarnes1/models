@@ -37,52 +37,63 @@ def online_eval(args):
     if not os.path.exists(args.round_dir):
         os.mkdir(args.round_dir)
     n_dir_processed = 0
-    processed_directories = set()
+    processed_directories = set()  # processed (or skipped) directories
     if args.max_number_of_iterations == 0:
         args.max_number_of_iterations = np.Inf
     best_map = 0.
     best_emb_subdir = None
     writer = SummaryWriter(log_dir=args.round_dir)
 
+    eval_counter = 0
+
     while n_dir_processed <= args.max_number_of_iterations:
         unprocessed_dir = [d for d in os.listdir(args.emb_dir) if d.isdigit()]
         unprocessed_dir = sorted(list(set(unprocessed_dir).difference(processed_directories)))
-        if len(unprocessed_dir) > 0:
+        while len(unprocessed_dir) > 0:
             print('{} unprocessed directories'.format(len(unprocessed_dir)))
-            train_iteration = unprocessed_dir[0]
-            print('Processing train iteration {}'.format(train_iteration))
-            round_subdir = os.path.join(args.round_dir, train_iteration)
-            emb_subdir = os.path.join(args.emb_dir, train_iteration)
-            results_dict = batch_eval(emb_subdir, round_subdir, args)
+            train_iteration = int(unprocessed_dir[0])
+            emb_subdir = os.path.join(args.emb_dir, str(train_iteration))
+            if np.floor(train_iteration / args.evaluate_interval) >= eval_counter:
+                eval_counter += 1
+                writer.add_scalar('queue_length', len(unprocessed_dir), train_iteration)
+
+                print('Processing train iteration {}'.format(train_iteration))
+                round_subdir = os.path.join(args.round_dir, str(train_iteration))
+                results_dict, num_instances = batch_eval(emb_subdir, round_subdir, args)
+
+                # Publish to tensorboard
+                mAP = results_dict['averages']['allAp']
+                writer.add_scalar('n_instances', num_instances, train_iteration)
+                writer.add_scalar('AP', mAP, train_iteration)
+                writer.add_scalar('AP50', results_dict['averages']['allAp50%'], train_iteration)
+                for semantic_class_name, class_scores in results_dict['averages']['classes'].iteritems():
+                    writer.add_scalar('{}/AP'.format(semantic_class_name), class_scores['ap'], train_iteration)
+                    writer.add_scalar('{}/AP50'.format(semantic_class_name), class_scores['ap50%'], train_iteration)
+
+                # Delete directory
+                if args.delete_old_embeddings:
+                    if mAP > best_map:
+                        if best_emb_subdir is not None:
+                            shutil.rmtree(best_emb_subdir)
+                        best_map = mAP
+                        best_emb_subdir = emb_subdir
+                    else:
+                        shutil.rmtree(emb_subdir)
+            elif args.delete_old_embeddings:
+                shutil.rmtree(emb_subdir)
             processed_directories.add(train_iteration)
 
-            # Publish to tensorboard
-            mAP = results_dict['averages']['allAp']
-            train_iteration = int(train_iteration)
-            writer.add_scalar('AP', mAP, train_iteration)
-            writer.add_scalar('AP50', mAP, results_dict['averages']['allAp50%'])
-            for semantic_class_name, class_scores in results_dict['averages']['classes'].iteritems():
-                writer.add_scalar('{}/AP'.format(semantic_class_name), class_scores['ap'], train_iteration)
-                writer.add_scalar('{}/AP50'.format(semantic_class_name), class_scores['ap50%'], train_iteration)
-
-            # Delete directory
-            if args.delete_old_embeddings:
-                if mAP > best_map:
-                    if best_emb_subdir is not None:
-                        shutil.rmtree(best_emb_subdir)
-                    best_map = mAP
-                    best_emb_subdir = emb_subdir
-                else:
-                    shutil.rmtree(emb_subdir)
         else:
             time.sleep(10)  # wait before checking if new results to process
 
 
 def batch_eval(emb_subdir, round_subdir, args):
     """
-    :param emb_subdir:    Path to folder containing npy embedding files.
-    :param round_subdir:  Directory to write rounding results to.
-    :param args:
+    :param emb_subdir:      Path to folder containing npy embedding files.
+    :param round_subdir:    Directory to write rounding results to.
+    :param args:            argparse results
+    :return results_dict:   Dictionary of results from cityscapes evaluation.
+    :return num_instances:  Average number of clusters after rounding.
     """
     if not os.path.exists(round_subdir):
         os.mkdir(round_subdir)
@@ -127,7 +138,7 @@ def batch_eval(emb_subdir, round_subdir, args):
     print 'Final results:'
     printResults(results_dict['averages'], eval_args)
     print 'Average number of instances per image {}'.format(num_instances)
-    return results_dict
+    return results_dict, num_instances
 
 
 def round_embedding_wrapper(inputs):
@@ -291,6 +302,9 @@ if __name__ == '__main__':
     parser.add_argument("--max_number_of_iterations", type=int, default=0,
                         help='Number of pixel embedding folders to process. If 0, wait indefinitely for new folders.'
                              'Always process from oldest (smallest train iteration) to newest.')
+
+    parser.add_argument("--evaluate_interval", type=int, default=5000,
+                        help='Run evaluation on latest embeddings every this many training intervals.')
 
     parser.add_argument("--delete_old_embeddings", action='store_true', default=False,
                         help='Delete folders of embeddings after processing. If true, only keep the embeddings'
