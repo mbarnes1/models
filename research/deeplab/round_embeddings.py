@@ -57,8 +57,8 @@ def online_eval(args):
             train_iteration = int(unprocessed_dir[0])
             emb_subdir = os.path.join(args.emb_dir, str(train_iteration))
 
-            if np.floor(train_iteration / args.evaluate_interval) >= eval_counter:
-                eval_counter += 1
+            if np.floor(train_iteration / args.evaluate_interval) > eval_counter:
+                eval_counter = np.floor(train_iteration / args.evaluate_interval)
 
                 print('Processing train iteration {}'.format(train_iteration))
                 round_subdir = os.path.join(args.round_dir, str(train_iteration))
