@@ -42,13 +42,13 @@ def online_eval(args):
         args.max_number_of_iterations = np.Inf
     best_map = 0.
     best_emb_subdir = None
-    writer = SummaryWriter(log_dir=args.emb_dir)
+    writer = SummaryWriter(log_dir=args.round_dir)
 
     while n_dir_processed <= args.max_number_of_iterations:
-        unprocessed_dir = sorted(list(set(os.listdir(args.emb_dir)).difference_update(processed_directories)))
+        unprocessed_dir = sorted(list(set(os.listdir(args.emb_dir)).difference(processed_directories)))
         if len(unprocessed_dir) > 0:
             print('{} unprocessed directories'.format(len(unprocessed_dir)))
-            train_iteration = unprocessed_dir[0]
+            train_iteration = int(unprocessed_dir[0])
             print('Processing train iteration {}'.format(train_iteration))
             round_subdir = os.path.join(args.round_dir, train_iteration)
             emb_subdir = os.path.join(args.emb_dir, train_iteration)
