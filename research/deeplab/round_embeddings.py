@@ -286,7 +286,7 @@ if __name__ == '__main__':
                         help='Set if semantic_dir points to ground truth semantic files, which have directory'
                              'and file format {city}/{city}_instanceIds.png')
 
-    parser.add_argument("--max_number_of_iterations", dtype='int', default=0,
+    parser.add_argument("--max_number_of_iterations", type=int, default=0,
                         help='Number of pixel embedding folders to process. If 0, wait indefinitely for new folders.'
                              'Always process from oldest (smallest train iteration) to newest.')
 
