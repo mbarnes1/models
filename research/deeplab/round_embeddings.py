@@ -49,7 +49,7 @@ def online_eval(args):
         unprocessed_dir = sorted(list(set(unprocessed_dir).difference(processed_directories)))
         if len(unprocessed_dir) > 0:
             print('{} unprocessed directories'.format(len(unprocessed_dir)))
-            train_iteration = int(unprocessed_dir[0])
+            train_iteration = unprocessed_dir[0]
             print('Processing train iteration {}'.format(train_iteration))
             round_subdir = os.path.join(args.round_dir, train_iteration)
             emb_subdir = os.path.join(args.emb_dir, train_iteration)
@@ -58,6 +58,7 @@ def online_eval(args):
 
             # Publish to tensorboard
             mAP = results_dict['averages']['allAp']
+            train_iteration = int(train_iteration)
             writer.add_scalar('AP', mAP, train_iteration)
             writer.add_scalar('AP50', mAP, results_dict['averages']['allAp50%'])
             for semantic_class_name, class_scores in results_dict['averages']['classes'].iteritems():
