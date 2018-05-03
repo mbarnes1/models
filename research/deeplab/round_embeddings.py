@@ -309,4 +309,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    batch_eval(args)
+    online_eval(args)
