@@ -42,6 +42,7 @@ def online_eval(args):
         args.max_number_of_iterations = np.Inf
     best_map = 0.
     best_emb_subdir = None
+    best_round_subdir = None
     writer = SummaryWriter(log_dir=args.round_dir)
 
     eval_counter = 0
@@ -75,10 +76,13 @@ def online_eval(args):
                     if mAP > best_map:
                         if best_emb_subdir is not None:
                             shutil.rmtree(best_emb_subdir)
+                            shutil.rmtree(best_round_subdir)
                         best_map = mAP
                         best_emb_subdir = emb_subdir
+                        best_round_subdir = round_subdir
                     else:
                         shutil.rmtree(emb_subdir)
+                        shutil.rmtree(round_subdir)
             elif args.delete_old_embeddings:
                 shutil.rmtree(emb_subdir)
             processed_directories.add(train_iteration)
@@ -307,8 +311,8 @@ if __name__ == '__main__':
                         help='Run evaluation on latest embeddings every this many training intervals.')
 
     parser.add_argument("--delete_old_embeddings", action='store_true', default=False,
-                        help='Delete folders of embeddings after processing. If true, only keep the embeddings'
-                             'with the best mAP score.')
+                        help='Delete folders of embeddings and roundings after processing. If true, only keep the '
+                             'embeddings and roundings with the best mAP score.')
 
     parser.add_argument("--max_images", default=np.Inf, type=int,
                         help='Evaluate at most this many images')
