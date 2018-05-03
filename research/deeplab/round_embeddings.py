@@ -52,13 +52,21 @@ def online_eval(args):
 
     while n_dir_processed <= args.max_number_of_iterations:
         unprocessed_dir = get_unprocessed_emb_subdir(args.emb_dir, processed_dir=processed_directories)
+        print 'Unprocessed_dir'
+        print unprocessed_dir
+        print 'Processed_dir'
+        print processed_directories
+
         if len(unprocessed_dir) > 0:
             print('{} unprocessed directories'.format(len(unprocessed_dir)))
             train_iteration = int(unprocessed_dir[0])
             emb_subdir = os.path.join(args.emb_dir, str(train_iteration))
 
-            if np.floor(train_iteration / args.evaluate_interval) > eval_counter:
-                eval_counter = np.floor(train_iteration / args.evaluate_interval)
+            current_eval_interval = np.floor(train_iteration / args.evaluate_interval)
+            print 'Current eval interval {}'.format(current_eval_interval)
+            print 'Eval counter {}'.format(eval_counter)
+            if current_eval_interval > eval_counter:
+                eval_counter = current_eval_interval
 
                 print('Processing train iteration {}'.format(train_iteration))
                 round_subdir = os.path.join(args.round_dir, str(train_iteration))
