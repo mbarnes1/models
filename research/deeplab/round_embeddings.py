@@ -59,7 +59,7 @@ def online_eval(args):
 
         if len(unprocessed_dir) > 0:
             print('{} unprocessed directories'.format(len(unprocessed_dir)))
-            train_iteration = int(unprocessed_dir[0])
+            train_iteration = unprocessed_dir[0]
             emb_subdir = os.path.join(args.emb_dir, str(train_iteration))
 
             current_eval_interval = np.floor(train_iteration / args.evaluate_interval)
@@ -96,7 +96,7 @@ def online_eval(args):
                         shutil.rmtree(round_subdir, ignore_errors=True)
             elif args.delete_old_embeddings:
                 shutil.rmtree(emb_subdir, ignore_errors=True)
-            processed_directories.add(str(train_iteration))
+            processed_directories.add(train_iteration)
 
         else:
             time.sleep(10)  # wait before checking if new results to process
@@ -108,11 +108,11 @@ def get_unprocessed_emb_subdir(emb_dir, processed_dir=set()):
     :param emb_dir:                Path to embedding directory, which contains subdirectories with format
                                    {train_iteration}/{image_name}.EMBEND
     :param processed_dir:          Already processed directories to exclude
-    :return subdirs:               Sorted list ofpartial path to subdir within emb_dir.
+    :return subdirs:               Sorted list of partial path (as integers) to subdir within emb_dir.
                                    Only return subdir which contain DATASET_SIZE number of embeddings, not in
                                    processed_dir and are a valid subdir name (i.e. is a train iteration digit).
     """
-    subdirs = [d for d in os.listdir(emb_dir) if d.isdigit() and
+    subdirs = [int(d) for d in os.listdir(emb_dir) if d.isdigit() and
                d not in processed_dir and
                len(glob.glob(os.path.join(emb_dir, d, '*'+EMBEND))) == DATASET_SIZE]
     return sorted(subdirs)
