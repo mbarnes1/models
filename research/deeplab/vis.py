@@ -97,6 +97,9 @@ flags.DEFINE_boolean('instance', False,
 flags.DEFINE_boolean('save_raw_logits', False,
                      'Save the raw logits to npy binary file. Do not save any raw predictions or any image files.')
 
+flags.DEFINE_boolean('keep_all_raw_logits', False,
+                     'Keep all raw logits at every train model checkpoint in a separate directory, instead of'
+                     'overwriting with latest prediction.')
 
 # The folder where semantic segmentation predictions are saved.
 _SEMANTIC_PREDICTION_SAVE_FOLDER = 'segmentation_results'
@@ -214,10 +217,7 @@ def main(unused_argv):
     tf.gfile.MakeDirs(FLAGS.vis_logdir)
     save_dir = os.path.join(FLAGS.vis_logdir, _SEMANTIC_PREDICTION_SAVE_FOLDER)
     tf.gfile.MakeDirs(save_dir)
-    raw_save_dir = os.path.join(
-        FLAGS.vis_logdir, _RAW_SEMANTIC_PREDICTION_SAVE_FOLDER)
-    tf.gfile.MakeDirs(raw_save_dir)
-
+    raw_save_dir = None
     tf.logging.info('Visualizing on %s set', FLAGS.vis_split)
 
     g = tf.Graph()
@@ -316,6 +316,11 @@ def main(unused_argv):
                                                              time.gmtime()))
             tf.logging.info('Visualizing with model %s', last_checkpoint)
 
+            prev_raw_save_dir = raw_save_dir
+            train_iteration_number = last_checkpoint.split('-')[-1]
+            raw_save_dir = os.path.join(FLAGS.vis_logdir, _RAW_SEMANTIC_PREDICTION_SAVE_FOLDER, train_iteration_number)
+            tf.gfile.MakeDirs(raw_save_dir)
+
             with sv.managed_session(FLAGS.master,
                                     start_standard_services=False) as sess:
                 sv.start_queue_runners(sess)
@@ -339,6 +344,11 @@ def main(unused_argv):
             tf.logging.info(
                 'Finished visualization at ' + time.strftime('%Y-%m-%d-%H:%M:%S',
                                                              time.gmtime()))
+            if not FLAGS.keep_all_raw_logits:
+                tf.logging.info('Removing previous raw save directory')
+                tf.gfile.DeleteRecursively(prev_raw_save_dir)
+                tf.gfile.Remove(prev_raw_save_dir)
+
             time_to_next_eval = start + FLAGS.eval_interval_secs - time.time()
             if time_to_next_eval > 0:
                 time.sleep(time_to_next_eval)
