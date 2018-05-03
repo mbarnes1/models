@@ -51,7 +51,7 @@ def online_eval(args):
     writer = SummaryWriter(log_dir=args.round_dir)
 
     while n_dir_processed <= args.max_number_of_iterations:
-        unprocessed_dir = get_unprocessed_emb_subdir(args.emb_dir)
+        unprocessed_dir = get_unprocessed_emb_subdir(args.emb_dir, processed_dir=processed_directories)
         while len(unprocessed_dir) > 0:
             print('{} unprocessed directories'.format(len(unprocessed_dir)))
             train_iteration = int(unprocessed_dir[0])
@@ -88,7 +88,7 @@ def online_eval(args):
                         shutil.rmtree(round_subdir, ignore_errors=True)
             elif args.delete_old_embeddings:
                 shutil.rmtree(emb_subdir, ignore_errors=True)
-            processed_directories.add(train_iteration)
+            processed_directories.add(str(train_iteration))
 
         else:
             time.sleep(10)  # wait before checking if new results to process
