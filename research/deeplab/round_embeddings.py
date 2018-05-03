@@ -15,6 +15,9 @@ import matplotlib.colors
 from multiprocessing import Pool
 import numpy as np
 import os
+import shutil
+from tensorboardX import SummaryWriter
+import time
 from utils.cluster_utils import kwik_cluster, lp_cost
 
 
@@ -25,30 +28,88 @@ IMGEND = '_gtFine_instanceIds.png'  # ground truth instance labels file ending
 GTSEMEND = '_gtFine_labelIds.png'  # predicted semantic label file ending. For now, use ground truth
 
 
-def batch_eval(args):
+def online_eval(args):
     """
+    Recursively process directories of embedding files and publish results to Tensorboard.
     :param args:
+    :return:
     """
     if not os.path.exists(args.round_dir):
         os.mkdir(args.round_dir)
+    n_dir_processed = 0
+    processed_directories = set()
+    if args.max_number_of_iterations == 0:
+        args.max_number_of_iterations = np.Inf
+    best_map = 0.
+    best_emb_subdir = None
+    writer = SummaryWriter(log_dir=args.emb_dir)
+
+    while n_dir_processed <= args.max_number_of_iterations:
+        unprocessed_dir = sorted(list(set(os.listdir(args.emb_dir)).difference_update(processed_directories)))
+        if len(unprocessed_dir) > 0:
+            print('{} unprocessed directories'.format(len(unprocessed_dir)))
+            train_iteration = unprocessed_dir[0]
+            print('Processing train iteration {}'.format(train_iteration))
+            round_subdir = os.path.join(args.round_dir, train_iteration)
+            emb_subdir = os.path.join(args.emb_dir, train_iteration)
+            results_dict = batch_eval(emb_subdir, round_subdir, args)
+            processed_directories.add(train_iteration)
+
+            # Publish to tensorboard
+            mAP = results_dict['averages']['allAp']
+            writer.add_scalar('AP', mAP, train_iteration)
+            writer.add_scalar('AP50', mAP, results_dict['averages']['allAp50%'])
+            for semantic_class_name, class_scores in results_dict['averages']['classes'].iteritems():
+                writer.add_scalar('{}/AP'.format(semantic_class_name), class_scores['ap'], train_iteration)
+                writer.add_scalar('{}/AP50'.format(semantic_class_name), class_scores['ap50%'], train_iteration)
+
+            # Delete directory
+            if args.delete_old_embeddings:
+                if mAP > best_map:
+                    if best_emb_subdir is not None:
+                        shutil.rmtree(best_emb_subdir)
+                    best_map = mAP
+                    best_emb_subdir = emb_subdir
+                else:
+                    shutil.rmtree(emb_subdir)
+        else:
+            time.sleep(10)  # wait before checking if new results to process
+
+
+def batch_eval(emb_subdir, round_subdir, args):
+    """
+    :param emb_subdir:    Path to folder containing npy embedding files.
+    :param round_subdir:  Directory to write rounding results to.
+    :param args:
+    """
+    if not os.path.exists(round_subdir):
+        os.mkdir(round_subdir)
 
     print('Gathering all ground truth instance files...')
     input_list = []
     for dir_name, _, fileList in os.walk(args.dataset_dir):
         for file_name in fileList:
             if file_name.endswith(IMGEND):
-                input_list.append((dir_name, file_name, args))
+                image_name = file_name.rstrip(IMGEND)
+                if args.true_semantic:
+                    city = image_name.split('_')[0]
+                    semantic_path = os.path.join(args.semantic_dir, city, '{}{}'.format(image_name, GTSEMEND))
+                else:
+                    semantic_path = os.path.join(args.semantic_dir, '{}.png'.format(image_name))
+                embedding_path = os.path.join(emb_subdir, '{}{}'.format(image_name, EMBEND))
+                gt_instance_path = os.path.join(dir_name, file_name)
+                input_list.append((embedding_path, semantic_path, round_subdir, image_name, gt_instance_path, args))
     print('Found {} ground truth images.'.format(len(input_list)))
     input_list = input_list[0:min(len(input_list), args.max_images)]
 
     if args.num_processes > 1:
         p = Pool(args.num_processes)
         outputs = []
-        for i, output in enumerate(p.imap_unordered(single_eval, input_list), 1):
+        for i, output in enumerate(p.imap_unordered(round_embedding_wrapper, input_list), 1):
             print('done {:4.2f}%'.format(100*i / len(input_list)))
             outputs.append(output)
     else:
-        outputs = map(single_eval, input_list)
+        outputs = map(round_embedding_wrapper, input_list)
 
     pred_paths = []
     gt_paths = []
@@ -67,33 +128,27 @@ def batch_eval(args):
     return results_dict
 
 
-def single_eval(inputs):
-    dir_name, file_name, args = inputs
-
-    image_name = file_name.rstrip(IMGEND)
-    if args.true_semantic:
-        city = image_name.split('_')[0]
-        semantic_path = os.path.join(args.semantic_dir, city, '{}{}'.format(image_name, GTSEMEND))
-    else:
-        semantic_path = os.path.join(args.semantic_dir, '{}.png'.format(image_name))
-    embedding_path = os.path.join(args.emb_dir, '{}{}'.format(image_name, EMBEND))
-    gt_instance_path = os.path.join(dir_name, file_name)
-    pred_path, img_path, num_instances = round_embedding(embedding_path, semantic_path, args.round_dir, image_name,
+def round_embedding_wrapper(inputs):
+    """
+    :param inputs:             Tuple containing (embedding_path, semantic_path, results_dir, image_name,
+                                                 gt_instance_path, args)
+                               where these params are defined in round_embedding. Except for gt_instance_path, which is
+                               passed back as an output (for easier unordered multiprocessing) and args, which is the
+                               argparse arguments.
+    :return pred_path:         Path to prediction TXT image.
+    :return gt_instance_path:  Same as input. Path to ground truth instance labels png file.
+    """
+    embedding_path, semantic_path, emb_dir, image_name, gt_instance_path, args = inputs
+    pred_path, img_path, num_instances = round_embedding(embedding_path, semantic_path, emb_dir, image_name,
                                                          mean_shift_iterations=args.mean_shift_iterations,
                                                          packing_radius=args.packing_radius,
                                                          no_semantic_blocking=args.no_semantic_blocking)
-
-    # Individual results
-    #results_dict = evaluate_img_lists([pred_path], [gt_instance_path], args.round_dir)
-    #print('Rounding results for image {}'.format(image_name))
-    #printResults(results_dict['averages'], eval_args)
     return pred_path, gt_instance_path, num_instances
 
 
 def round_embedding(embedding_path, semantic_path, results_dir, image_name, mean_shift_iterations=1, packing_radius=1.,
                     no_semantic_blocking=False):
     """
-
     :param embedding_path:         Path to predicted pixel embedding file.
     :param semantic_path:          Path to predicted semantic image label file.
     :param results_dir:            Write rounding results to this directory.
@@ -103,6 +158,7 @@ def round_embedding(embedding_path, semantic_path, results_dir, image_name, mean
     :param no_semantic_blocking:   Only cluster within (predicted) semantic classes.
     :return pred_path:             Path to prediction TXT image.
     :return img_path:              Path to prediction PNG image.
+    :return num_instances:         Number of predicted instances in this image.
     """
     semantic_labels = imageio.imread(semantic_path)
 
@@ -217,8 +273,8 @@ if __name__ == '__main__':
                         help='Path to directory containing semantic ID PNG files.')
     
     parser.add_argument("emb_dir",
-                        help='Path to directory containing pixel embedding files.'
-                             'Files must match pattern {imagename}.npy')
+                        help='Path to directory containing folders of pixel embedding files.'
+                             'Files must match pattern {train_iteration}/{imagename}.npy')
 
     parser.add_argument("round_dir",
                         help='Directory to save rounding results to.')
@@ -229,6 +285,14 @@ if __name__ == '__main__':
     parser.add_argument("--true_semantic", action='store_true', default=False,
                         help='Set if semantic_dir points to ground truth semantic files, which have directory'
                              'and file format {city}/{city}_instanceIds.png')
+
+    parser.add_argument("--max_number_of_iterations", dtype='int', default=0,
+                        help='Number of pixel embedding folders to process. If 0, wait indefinitely for new folders.'
+                             'Always process from oldest (smallest train iteration) to newest.')
+
+    parser.add_argument("--delete_old_embeddings", action='store_true', default=False,
+                        help='Delete folders of embeddings after processing. If true, only keep the embeddings'
+                             'with the best mAP score.')
 
     parser.add_argument("--max_images", default=np.Inf, type=int,
                         help='Evaluate at most this many images')
