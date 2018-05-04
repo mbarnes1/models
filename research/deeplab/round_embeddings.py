@@ -99,7 +99,7 @@ def online_eval(args):
             processed_directories.add(train_iteration)
 
         else:
-            time.sleep(10)  # wait before checking if new results to process
+            time.sleep(60)  # wait before checking if new results to process
 
 
 def get_unprocessed_emb_subdir(emb_dir, processed_dir=set()):
