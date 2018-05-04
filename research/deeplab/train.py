@@ -185,6 +185,8 @@ flags.DEFINE_boolean('normalize', True, 'Normalize pixel embedding vectors to un
 
 flags.DEFINE_boolean('ignore_label', True, 'Ignore the ignore label when computing spectral loss.')
 
+flags.DEFINE_boolean('timestamp', True, 'Stamp the logdir with current time and VCS commit.')
+
 # Location
 flags.DEFINE_boolean('location', False, 'Add two dimensions to the image in order to take into account the location of '
                                         'each pixel.')
@@ -282,7 +284,8 @@ def main(unused_argv):
     dataset = segmentation_dataset.get_dataset(
         FLAGS.dataset, FLAGS.train_split, dataset_dir=FLAGS.dataset_dir, label_dtype=label_dtype)
 
-    FLAGS.train_logdir = timestamp_dir(FLAGS.train_logdir)
+    if FLAGS.timestamp:
+        FLAGS.train_logdir = timestamp_dir(FLAGS.train_logdir)
     tf.gfile.MakeDirs(FLAGS.train_logdir)
     tf.logging.info('Training on %s set', FLAGS.train_split)
 
