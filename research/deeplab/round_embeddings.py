@@ -45,7 +45,7 @@ def online_eval(args):
     best_map = 0.
     best_emb_subdir = None
     best_round_subdir = None
-    eval_counter = 0
+    eval_counter = -1
     n_dir_processed = 0
 
     writer = SummaryWriter(log_dir=args.round_dir)
