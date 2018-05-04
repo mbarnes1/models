@@ -50,7 +50,7 @@ def online_eval(args):
 
     writer = SummaryWriter(log_dir=args.round_dir)
 
-    while n_dir_processed <= args.max_number_of_iterations:
+    while n_dir_processed < args.max_number_of_iterations:
         unprocessed_dir = get_unprocessed_emb_subdir(args.emb_dir, processed_dir=processed_directories)
         print 'Unprocessed_dir'
         print unprocessed_dir
