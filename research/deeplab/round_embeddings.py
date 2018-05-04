@@ -94,6 +94,7 @@ def online_eval(args):
                     else:
                         shutil.rmtree(emb_subdir, ignore_errors=True)
                         shutil.rmtree(round_subdir, ignore_errors=True)
+                n_dir_processed += 1
             elif args.delete_old_embeddings:
                 shutil.rmtree(emb_subdir, ignore_errors=True)
             processed_directories.add(train_iteration)
@@ -113,7 +114,7 @@ def get_unprocessed_emb_subdir(emb_dir, processed_dir=set()):
                                    processed_dir and are a valid subdir name (i.e. is a train iteration digit).
     """
     subdirs = [int(d) for d in os.listdir(emb_dir) if d.isdigit() and
-               d not in processed_dir and
+               int(d) not in processed_dir and
                len(glob.glob(os.path.join(emb_dir, d, '*'+EMBEND))) == DATASET_SIZE]
     return sorted(subdirs)
 
