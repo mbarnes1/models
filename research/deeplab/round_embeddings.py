@@ -17,7 +17,7 @@ from multiprocessing import Pool
 import numpy as np
 import os
 import shutil
-from tensorboardX import SummaryWriter
+#from tensorboardX import SummaryWriter
 import time
 from utils.cluster_utils import kwik_cluster, lp_cost
 
@@ -48,23 +48,16 @@ def online_eval(args):
     eval_counter = -1
     n_dir_processed = 0
 
-    writer = SummaryWriter(log_dir=args.round_dir)
+    #writer = SummaryWriter(log_dir=args.round_dir)
 
     while n_dir_processed < args.max_number_of_iterations:
         unprocessed_dir = get_unprocessed_emb_subdir(args.emb_dir, processed_dir=processed_directories)
-        print 'Unprocessed_dir'
-        print unprocessed_dir
-        print 'Processed_dir'
-        print processed_directories
 
         if len(unprocessed_dir) > 0:
-            print('{} unprocessed directories'.format(len(unprocessed_dir)))
             train_iteration = unprocessed_dir[0]
             emb_subdir = os.path.join(args.emb_dir, str(train_iteration))
 
             current_eval_interval = np.floor(train_iteration / args.evaluate_interval)
-            print 'Current eval interval {}'.format(current_eval_interval)
-            print 'Eval counter {}'.format(eval_counter)
             if current_eval_interval > eval_counter:
                 eval_counter = current_eval_interval
 
@@ -74,13 +67,13 @@ def online_eval(args):
 
                 # Publish to tensorboard
                 mAP = results_dict['averages']['allAp']
-                writer.add_scalar('queue_length', len(unprocessed_dir), train_iteration)
-                writer.add_scalar('n_instances_per_image', num_instances, train_iteration)
-                writer.add_scalar('AP', mAP, train_iteration)
-                writer.add_scalar('AP50', results_dict['averages']['allAp50%'], train_iteration)
-                for semantic_class_name, class_scores in results_dict['averages']['classes'].iteritems():
-                    writer.add_scalar('{}/AP'.format(semantic_class_name), class_scores['ap'], train_iteration)
-                    writer.add_scalar('{}/AP50'.format(semantic_class_name), class_scores['ap50%'], train_iteration)
+                # writer.add_scalar('queue_length', len(unprocessed_dir), train_iteration)
+                # writer.add_scalar('n_instances_per_image', num_instances, train_iteration)
+                # writer.add_scalar('AP', mAP, train_iteration)
+                # writer.add_scalar('AP50', results_dict['averages']['allAp50%'], train_iteration)
+                # for semantic_class_name, class_scores in results_dict['averages']['classes'].iteritems():
+                #     writer.add_scalar('{}/AP'.format(semantic_class_name), class_scores['ap'], train_iteration)
+                #     writer.add_scalar('{}/AP50'.format(semantic_class_name), class_scores['ap50%'], train_iteration)
 
                 # Delete directory
                 if args.delete_old_embeddings:
