@@ -187,6 +187,9 @@ flags.DEFINE_boolean('ignore_label', True, 'Ignore the ignore label when computi
 
 flags.DEFINE_boolean('timestamp', True, 'Stamp the logdir with current time and VCS commit.')
 
+flags.DEFINE_integer('embedding_dimension', 0, 'Dimension of the pixel embedding vector for instance segmentation.'
+                                               'If 0, then use number of number of semantic classes in the dataset.')
+
 # Location
 flags.DEFINE_boolean('location', False, 'Add two dimensions to the image in order to take into account the location of '
                                         'each pixel.')
@@ -291,7 +294,7 @@ def main(unused_argv):
 
     with tf.Graph().as_default():
         with tf.device(config.inputs_device()):
-            print 'Starting queues with {} readers and {} threads'.format(FLAGS.num_readers, FLAGS.num_threads)
+            tf.logging.info('Starting queues with {} readers and {} threads'.format(FLAGS.num_readers, FLAGS.num_threads))
             samples = input_generator.get(
                 dataset,
                 FLAGS.train_crop_size,
@@ -318,8 +321,10 @@ def main(unused_argv):
 
             # Define the model and create clones.
             model_fn = _build_deeplab
+            num_classes = dataset.num_classes if FLAGS.embedding_dimension == 0 else FLAGS.embedding_dimension
+            tf.logging.info('Number classes / embedding dimension {}'.format(num_classes))
             model_args = (inputs_queue, {
-                common.OUTPUT_TYPE: dataset.num_classes
+                common.OUTPUT_TYPE: num_classes
             }, dataset.ignore_label)
             clones = model_deploy.create_clones(config, model_fn, args=model_args)
 
