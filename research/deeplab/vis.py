@@ -101,6 +101,9 @@ flags.DEFINE_boolean('keep_all_raw_logits', False,
                      'Keep all raw logits at every train model checkpoint in a separate directory, instead of'
                      'overwriting with latest prediction.')
 
+flags.DEFINE_integer('embedding_dimension', 0, 'Dimension of the pixel embedding vector for instance segmentation.'
+                                               'If 0, then use number of number of semantic classes in the dataset.')
+
 # The folder where semantic segmentation predictions are saved.
 _SEMANTIC_PREDICTION_SAVE_FOLDER = 'segmentation_results'
 
@@ -231,9 +234,10 @@ def main(unused_argv):
                                       dataset_split=FLAGS.vis_split,
                                       is_training=False,
                                       model_variant=FLAGS.model_variant)
-
+        num_classes = dataset.num_classes if FLAGS.embedding_dimension == 0 else FLAGS.embedding_dimension
+        tf.logging.info('Number classes / embedding dimension: {}'.format(num_classes))
         model_options = common.ModelOptions(
-            outputs_to_num_classes={common.OUTPUT_TYPE: dataset.num_classes},
+            outputs_to_num_classes={common.OUTPUT_TYPE: num_classes},
             crop_size=FLAGS.vis_crop_size,
             atrous_rates=FLAGS.atrous_rates,
             output_stride=FLAGS.output_stride)

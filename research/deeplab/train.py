@@ -322,7 +322,7 @@ def main(unused_argv):
             # Define the model and create clones.
             model_fn = _build_deeplab
             num_classes = dataset.num_classes if FLAGS.embedding_dimension == 0 else FLAGS.embedding_dimension
-            tf.logging.info('Number classes / embedding dimension {}'.format(num_classes))
+            tf.logging.info('Number classes / embedding dimension: {}'.format(num_classes))
             model_args = (inputs_queue, {
                 common.OUTPUT_TYPE: num_classes
             }, dataset.ignore_label)
