@@ -90,6 +90,10 @@ flags.DEFINE_integer('max_number_of_iterations', 0,
                      'Maximum number of visualization iterations. Will loop '
                      'indefinitely upon nonpositive values.')
 
+flags.DEFINE_integer('final_train_iteration', 0,
+                     'Stop visualizing results after this final train iteration is published. Loop indefinitely upon'
+                     'nonpositive value.')
+
 # Spectral instance segmentation options
 flags.DEFINE_boolean('instance', False,
                      'Expect instance labels dataset, which have type uint16 instead of uint8.')
@@ -309,8 +313,12 @@ def main(unused_argv):
 
         # Loop to visualize the results when new checkpoint is created.
         num_iters = 0
-        while (FLAGS.max_number_of_iterations <= 0 or
-                       num_iters < FLAGS.max_number_of_iterations):
+        if FLAGS.final_train_iteration <= 0:
+            FLAGS.final_train_iteration = np.Inf
+        if FLAGS.max_number_of_iterations <= 0:
+            FLAGS.max_number_of_iterations = np.Inf
+        train_iteration_number = 0
+        while num_iters < FLAGS.max_number_of_iterations and int(train_iteration_number) < FLAGS.final_train_iteration:
             num_iters += 1
             last_checkpoint = slim.evaluation.wait_for_new_checkpoint(
                 FLAGS.checkpoint_dir, last_checkpoint)

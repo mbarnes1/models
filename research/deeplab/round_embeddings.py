@@ -41,18 +41,17 @@ def online_eval(args):
         os.mkdir(args.tensorboard_dir)
 
     processed_directories = set()  # processed (or skipped) directories
-    if args.max_number_of_iterations == 0:
-        args.max_number_of_iterations = np.Inf
 
     best_map = 0.
     best_emb_subdir = None
     best_round_subdir = None
     eval_counter = -1
     n_dir_processed = 0
+    train_iteration = 0
 
     writer = SummaryWriter(log_dir=args.tensorboard_dir)
 
-    while n_dir_processed < args.max_number_of_iterations:
+    while n_dir_processed < args.max_number_of_iterations and train_iteration < args.final_train_iteration:
         unprocessed_dir = get_unprocessed_emb_subdir(args.emb_dir, processed_dir=processed_directories)
 
         if len(unprocessed_dir) > 0:
@@ -336,11 +335,15 @@ if __name__ == '__main__':
                              'and file format {city}/{city}_instanceIds.png')
 
     parser.add_argument("--max_number_of_iterations", type=int, default=0,
-                        help='Number of pixel embedding folders to process. If 0, wait indefinitely for new folders.'
-                             'Always process from oldest (smallest train iteration) to newest.')
+                        help='Number of pixel embedding folders to process. Upon nonpositive value, wait indefinitely '
+                             'for new folders. Always process from oldest (smallest train iteration) to newest.')
 
     parser.add_argument("--evaluate_interval", type=int, default=5000,
                         help='Run evaluation on latest embeddings every this many training intervals.')
+
+    parser.add_argument("--final_train_iteration", type=int, default=0,
+                        help='Stop visualizing results after this final train iteration is published. Loop indefinitely '
+                             'upon nonpositive value.')
 
     parser.add_argument("--delete_old_embeddings", action='store_true', default=False,
                         help='Delete folders of embeddings and roundings after processing. If true, only keep the '
@@ -361,4 +364,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    if args.max_number_of_iterations <= 0:
+        args.max_number_of_iterations = np.Inf
+    if args.final_train_iteration <= 0:
+        args.final_train_iteration = np.Inf
     online_eval(args)
