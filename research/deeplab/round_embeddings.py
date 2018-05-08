@@ -37,6 +37,8 @@ def online_eval(args):
     """
     if not os.path.exists(args.round_dir):
         os.mkdir(args.round_dir)
+    if not os.path.exists(args.tensorboard_dir):
+        os.mkdir(args.tensorboard_dir)
 
     processed_directories = set()  # processed (or skipped) directories
     if args.max_number_of_iterations == 0:
@@ -48,7 +50,7 @@ def online_eval(args):
     eval_counter = -1
     n_dir_processed = 0
 
-    writer = SummaryWriter(log_dir=args.round_dir)
+    writer = SummaryWriter(log_dir=args.tensorboard_dir)
 
     while n_dir_processed < args.max_number_of_iterations:
         unprocessed_dir = get_unprocessed_emb_subdir(args.emb_dir, processed_dir=processed_directories)
@@ -321,6 +323,10 @@ if __name__ == '__main__':
 
     parser.add_argument("round_dir",
                         help='Directory to save rounding results to.')
+
+    parser.add_argument("tensorboard_dir",
+                        help='Directory to save tensorboard results to. Different than round_dir, otherwise tensorboard'
+                             'takes way too long to load.')
 
     parser.add_argument("--packing_radius", type=float, default=1.0,
                         help='The spherical packing radius used during training.')
