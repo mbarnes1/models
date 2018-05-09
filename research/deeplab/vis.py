@@ -108,6 +108,9 @@ flags.DEFINE_boolean('keep_all_raw_logits', False,
 flags.DEFINE_integer('embedding_dimension', 0, 'Dimension of the pixel embedding vector for instance segmentation.'
                                                'If 0, then use number of number of semantic classes in the dataset.')
 
+flags.DEFINE_boolean('location', False, 'Add two dimensions to the image in order to take into account the location of '
+                                        'each pixel.')
+
 # The folder where semantic segmentation predictions are saved.
 _SEMANTIC_PREDICTION_SAVE_FOLDER = 'segmentation_results'
 
@@ -237,7 +240,8 @@ def main(unused_argv):
                                       resize_factor=FLAGS.resize_factor,
                                       dataset_split=FLAGS.vis_split,
                                       is_training=False,
-                                      model_variant=FLAGS.model_variant)
+                                      model_variant=FLAGS.model_variant,
+                                      location=FLAGS.location)
         num_classes = dataset.num_classes if FLAGS.embedding_dimension == 0 else FLAGS.embedding_dimension
         tf.logging.info('Number classes / embedding dimension: {}'.format(num_classes))
         model_options = common.ModelOptions(
