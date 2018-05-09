@@ -191,10 +191,10 @@ flags.DEFINE_integer('embedding_dimension', 0, 'Dimension of the pixel embedding
                                                'If 0, then use number of number of semantic classes in the dataset.')
 
 # Location
-flags.DEFINE_boolean('location', None, 'Add two channels to the image in order to take into account the location of '
-                                       'each pixel. Valid options are:'
-                                       '    input:    Add location to the input image'
-                                       '    xception: Add location after the xception65 model')
+flags.DEFINE_string('location', None, 'Add two channels to the image in order to take into account the location of '
+                                      'each pixel. Valid options are:'
+                                      '    input:    Add location to the input image'
+                                      '    xception: Add location after the xception65 model')
 
 
 def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):

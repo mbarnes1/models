@@ -108,10 +108,10 @@ flags.DEFINE_boolean('keep_all_raw_logits', False,
 flags.DEFINE_integer('embedding_dimension', 0, 'Dimension of the pixel embedding vector for instance segmentation.'
                                                'If 0, then use number of number of semantic classes in the dataset.')
 
-flags.DEFINE_boolean('location', None, 'Add two channels to the image in order to take into account the location of '
-                                       'each pixel. Valid options are:'
-                                       '    input:    Add location to the input image'
-                                       '    xception: Add location after the xception65 model')
+flags.DEFINE_string('location', None, 'Add two channels to the image in order to take into account the location of '
+                                      'each pixel. Valid options are:'
+                                      '    input:    Add location to the input image'
+                                      '    xception: Add location after the xception65 model')
 
 # The folder where semantic segmentation predictions are saved.
 _SEMANTIC_PREDICTION_SAVE_FOLDER = 'segmentation_results'
