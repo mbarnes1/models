@@ -247,13 +247,13 @@ def batch_gather(params, indices):
     """
     batch_size, num_indices = indices.shape
     row_indices = tf.range(batch_size)  # nbatch
-    row_indices = _tile_along_new_axis(row_indices, num_indices, axis=1)  # nbatch x b
+    row_indices = tile_along_new_axis(row_indices, num_indices, axis=1)  # nbatch x b
     indices_nd = tf.stack([row_indices, indices], axis=2)  # nbatch x b x 2
     gathered_params = tf.gather_nd(params, indices_nd)  # nbatch x b x ...
     return gathered_params
 
 
-def _tile_along_new_axis(params, multiples, axis=-1):
+def tile_along_new_axis(params, multiples, axis=-1):
     """
     Tiles params multiples times along new axis.
     :param params:        Tensor
@@ -277,6 +277,6 @@ def labels_to_adjacency(labels, m=None):
     """
     if m is None:
         m = tf.convert_to_tensor(labels.shape[1])
-    labels = _tile_along_new_axis(labels, m, axis=1)
+    labels = tile_along_new_axis(labels, m, axis=1)
     adjacency = tf.equal(labels, tf.transpose(labels, [0, 2, 1]))
     return adjacency

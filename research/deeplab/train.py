@@ -191,8 +191,10 @@ flags.DEFINE_integer('embedding_dimension', 0, 'Dimension of the pixel embedding
                                                'If 0, then use number of number of semantic classes in the dataset.')
 
 # Location
-flags.DEFINE_boolean('location', False, 'Add two dimensions to the image in order to take into account the location of '
-                                        'each pixel.')
+flags.DEFINE_boolean('location', None, 'Add two channels to the image in order to take into account the location of '
+                                       'each pixel. Valid options are:'
+                                       '    input:    Add location to the input image'
+                                       '    xception: Add location after the xception65 model')
 
 
 def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
@@ -226,7 +228,8 @@ def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
         image_pyramid=FLAGS.image_pyramid,
         weight_decay=FLAGS.weight_decay,
         is_training=True,
-        fine_tune_batch_norm=FLAGS.fine_tune_batch_norm)
+        fine_tune_batch_norm=FLAGS.fine_tune_batch_norm,
+        location=FLAGS.location == 'xception')
 
     add_loss = train_utils.add_spectral_loss_for_each_scale if FLAGS.spectral \
         else train_utils.add_softmax_cross_entropy_loss_for_each_scale
@@ -310,7 +313,7 @@ def main(unused_argv):
                 model_variant=FLAGS.model_variant,
                 num_readers=FLAGS.num_readers,
                 num_threads=FLAGS.num_threads,
-                location=FLAGS.location
+                location=FLAGS.location == 'input'
             )
             inputs_queue = prefetch_queue.prefetch_queue(
                 samples, capacity=128 * config.num_clones)

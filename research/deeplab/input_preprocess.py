@@ -33,6 +33,8 @@ def add_location(image):
   Returns:
     positioned_image: Image with the two new dimensions
   """
+  tf.logging.info('Adding location to input image.')
+
   dim = tf.shape(image, out_type=tf.int32)
 
   # Creation matrix of position

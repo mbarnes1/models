@@ -108,8 +108,10 @@ flags.DEFINE_boolean('keep_all_raw_logits', False,
 flags.DEFINE_integer('embedding_dimension', 0, 'Dimension of the pixel embedding vector for instance segmentation.'
                                                'If 0, then use number of number of semantic classes in the dataset.')
 
-flags.DEFINE_boolean('location', False, 'Add two dimensions to the image in order to take into account the location of '
-                                        'each pixel.')
+flags.DEFINE_boolean('location', None, 'Add two channels to the image in order to take into account the location of '
+                                       'each pixel. Valid options are:'
+                                       '    input:    Add location to the input image'
+                                       '    xception: Add location after the xception65 model')
 
 # The folder where semantic segmentation predictions are saved.
 _SEMANTIC_PREDICTION_SAVE_FOLDER = 'segmentation_results'
@@ -241,7 +243,7 @@ def main(unused_argv):
                                       dataset_split=FLAGS.vis_split,
                                       is_training=False,
                                       model_variant=FLAGS.model_variant,
-                                      location=FLAGS.location)
+                                      location=FLAGS.location == 'input')
         num_classes = dataset.num_classes if FLAGS.embedding_dimension == 0 else FLAGS.embedding_dimension
         tf.logging.info('Number classes / embedding dimension: {}'.format(num_classes))
         model_options = common.ModelOptions(
@@ -256,14 +258,16 @@ def main(unused_argv):
             predictions = predict(
                 samples[common.IMAGE],
                 model_options=model_options,
-                image_pyramid=FLAGS.image_pyramid)
+                image_pyramid=FLAGS.image_pyramid,
+                location=FLAGS.location == 'xception')
         else:
             tf.logging.info('Performing multi-scale test.')
             predictions = model.predict_labels_multi_scale(
                 samples[common.IMAGE],
                 model_options=model_options,
                 eval_scales=FLAGS.eval_scales,
-                add_flipped_images=FLAGS.add_flipped_images)
+                add_flipped_images=FLAGS.add_flipped_images,
+                location=FLAGS.location == 'xception')
         predictions = predictions[common.OUTPUT_TYPE]
 
         if FLAGS.min_resize_value and FLAGS.max_resize_value:

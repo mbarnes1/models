@@ -1,5 +1,5 @@
 from __future__ import division
-from deeplab.utils.losses import batch_gather, _tile_along_new_axis, labels_to_adjacency, spectral_loss, spectral_loss_fast_grad
+from deeplab.utils.losses import batch_gather, tile_along_new_axis, labels_to_adjacency, spectral_loss, spectral_loss_fast_grad
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 import tensorflow as tf
@@ -11,7 +11,7 @@ class MyTestCase(tf.test.TestCase):
         with self.test_session():
             x = [1, 2, 3, 4]
             x_tensor = tf.convert_to_tensor(x)
-            x_tiled = _tile_along_new_axis(x_tensor, 2, axis=0)
+            x_tiled = tile_along_new_axis(x_tensor, 2, axis=0)
             self.assertAllEqual(x_tiled.eval(), [x, x])
 
     def test_batch_gather_2d(self):

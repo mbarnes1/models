@@ -53,6 +53,7 @@ Alan L. Yuille (* equal contribution)
 """
 import tensorflow as tf
 from deeplab.core import feature_extractor
+from deeplab.utils.losses import tile_along_new_axis
 
 slim = tf.contrib.slim
 
@@ -82,7 +83,8 @@ def get_extra_layer_scopes():
 def predict_labels_multi_scale(images,
                                model_options,
                                eval_scales=(1.0,),
-                               add_flipped_images=False):
+                               add_flipped_images=False,
+                               location=False):
   """Predicts segmentation labels.
 
   Args:
@@ -90,6 +92,7 @@ def predict_labels_multi_scale(images,
     model_options: A ModelOptions instance to configure models.
     eval_scales: The scales to resize images for evaluation.
     add_flipped_images: Add flipped images for evaluation or not.
+    location:           Add location after the xception model.
 
   Returns:
     A dictionary with keys specifying the output_type (e.g., semantic
@@ -108,7 +111,8 @@ def predict_labels_multi_scale(images,
           model_options=model_options,
           image_pyramid=[image_scale],
           is_training=False,
-          fine_tune_batch_norm=False)
+          fine_tune_batch_norm=False,
+          location=location)
 
     if add_flipped_images:
       with tf.variable_scope(tf.get_variable_scope(), reuse=True):
@@ -117,7 +121,8 @@ def predict_labels_multi_scale(images,
             model_options=model_options,
             image_pyramid=[image_scale],
             is_training=False,
-            fine_tune_batch_norm=False)
+            fine_tune_batch_norm=False,
+            location=location)
 
     for output in sorted(outputs_to_scales_to_logits):
       scales_to_logits = outputs_to_scales_to_logits[output]
@@ -169,7 +174,7 @@ def predict_labels(images, model_options, image_pyramid=None):
     return predictions
 
 
-def predict_logits(images, model_options, image_pyramid=None):
+def predict_logits(images, model_options, image_pyramid=None, location=False):
     """
     Predicts logits
 
@@ -177,6 +182,7 @@ def predict_logits(images, model_options, image_pyramid=None):
     :param images:         A tensor of size [batch, height, width, channels].
     :param model_options:  A ModelOptions instance to configure models.
     :param image_pyramid:  Input image scales for multi-scale feature extraction.
+    :param location:       Add location after the xception model.
 
     :return logits:        A dictionary with keys specifying the output_type (e.g., semantic prediction) and values
                            storing Tensors representing logits. Each logit has size
@@ -187,7 +193,8 @@ def predict_logits(images, model_options, image_pyramid=None):
         model_options=model_options,
         image_pyramid=image_pyramid,
         is_training=False,
-        fine_tune_batch_norm=False)
+        fine_tune_batch_norm=False,
+        location=location)
 
     logits_dict = {}
     for output in sorted(outputs_to_scales_to_logits):
@@ -222,7 +229,8 @@ def multi_scale_logits(images,
                        image_pyramid,
                        weight_decay=0.0001,
                        is_training=False,
-                       fine_tune_batch_norm=False):
+                       fine_tune_batch_norm=False,
+                       location=False):
   """Gets the logits for multi-scale inputs.
 
   The returned logits are all downsampled (due to max-pooling layers)
@@ -230,12 +238,13 @@ def multi_scale_logits(images,
 
   Args:
     images: A tensor of size [batch, height, width, channels].
-    model_options: A ModelOptions instance to configure models.
-    image_pyramid: Input image scales for multi-scale feature extraction.
+    model_options:        A ModelOptions instance to configure models.
+    image_pyramid:        Input image scales for multi-scale feature extraction.
 
-    weight_decay: The weight decay for model variables.
-    is_training: Is training or not.
+    weight_decay:         The weight decay for model variables.
+    is_training:          Is training or not.
     fine_tune_batch_norm: Fine-tune the batch norm parameters or not.
+    location:             Add location after the xception model.
 
   Returns:
     outputs_to_scales_to_logits: A map of maps from output_type (e.g.,
@@ -303,7 +312,8 @@ def multi_scale_logits(images,
         weight_decay=weight_decay,
         reuse=True if count else None,
         is_training=is_training,
-        fine_tune_batch_norm=fine_tune_batch_norm)
+        fine_tune_batch_norm=fine_tune_batch_norm,
+        location=location)
 
     # Resize the logits to have the same dimension before merging.
     for output in sorted(outputs_to_logits):
@@ -340,107 +350,136 @@ def multi_scale_logits(images,
   return outputs_to_scales_to_logits
 
 
+def _add_location(features):
+    """
+    Add (x,y) location as two extra channels to features. Positions are scaled linearly in [0, 1].
+    :param features:                 A tensor of size [batch, feature_height, feature_width, feature_channels]
+    :return features_with_position:  A tensor of size [batch, feature_height, feature_width, feature_channels + 2]
+    """
+    tf.logging.info('Adding location to image features after xception model.')
+    dim = tf.shape(features, out_type=tf.int32)
+    batch = dim[0]
+    feature_height = dim[1]
+    feature_width = dim[2]
+
+    # Create position matrix
+    x = tf.cast(tf.range(0., 1., delta=1. / tf.cast(feature_width, tf.float32)), features.dtype)  # width
+    x = tile_along_new_axis(x, feature_height, axis=0)  # feature_height x feature_width
+
+    y = tf.cast(tf.range(0., 1., delta=1. / tf.cast(feature_height, tf.float32)), features.dtype)  # height
+    y = tile_along_new_axis(y, feature_width, axis=1)  # feature_height x feature_width
+
+    position = tf.stack([x, y], axis=2)  # feature_height x feature_width x 2
+    position = tile_along_new_axis(position, batch, axis=0)  # batch x feature_height x feature_width x 2
+
+    features_with_position = tf.concat([features, position], 3)
+
+    return features_with_position
+
+
 def _extract_features(images,
                       model_options,
                       weight_decay=0.0001,
                       reuse=None,
                       is_training=False,
-                      fine_tune_batch_norm=False):
-  """Extracts features by the particular model_variant.
+                      fine_tune_batch_norm=False,
+                      location=False):
+    """Extracts features by the particular model_variant.
 
-  Args:
-    images: A tensor of size [batch, height, width, channels].
-    model_options: A ModelOptions instance to configure models.
-    weight_decay: The weight decay for model variables.
-    reuse: Reuse the model variables or not.
-    is_training: Is training or not.
-    fine_tune_batch_norm: Fine-tune the batch norm parameters or not.
+    Args:
+      images: A tensor of size [batch, height, width, channels].
+      model_options:          A ModelOptions instance to configure models.
+      weight_decay:           The weight decay for model variables.
+      reuse:                  Reuse the model variables or not.
+      is_training:            Is training or not.
+      fine_tune_batch_norm:   Fine-tune the batch norm parameters or not.
+      location:               Add location (x,y) position as two extra channels after the xception65 model.
+    Returns:
+      concat_logits: A tensor of size [batch, feature_height, feature_width,
+        feature_channels], where feature_height/feature_width are determined by
+        the images height/width and output_stride.
+      end_points: A dictionary from components of the network to the corresponding
+        activation.
+    """
+    features, end_points = feature_extractor.extract_features(
+        images,
+        output_stride=model_options.output_stride,
+        multi_grid=model_options.multi_grid,
+        model_variant=model_options.model_variant,
+        weight_decay=weight_decay,
+        reuse=reuse,
+        is_training=is_training,
+        fine_tune_batch_norm=fine_tune_batch_norm)
 
-  Returns:
-    concat_logits: A tensor of size [batch, feature_height, feature_width,
-      feature_channels], where feature_height/feature_width are determined by
-      the images height/width and output_stride.
-    end_points: A dictionary from components of the network to the corresponding
-      activation.
-  """
-  features, end_points = feature_extractor.extract_features(
-      images,
-      output_stride=model_options.output_stride,
-      multi_grid=model_options.multi_grid,
-      model_variant=model_options.model_variant,
-      weight_decay=weight_decay,
-      reuse=reuse,
-      is_training=is_training,
-      fine_tune_batch_norm=fine_tune_batch_norm)
+    if not model_options.aspp_with_batch_norm:
+        return features, end_points
+    else:
+        batch_norm_params = {
+            'is_training': is_training and fine_tune_batch_norm,
+            'decay': 0.9997,
+            'epsilon': 1e-5,
+            'scale': True,
+        }
+        if location:
+            features = _add_location(features)
+        with slim.arg_scope(
+                [slim.conv2d, slim.separable_conv2d],
+                weights_regularizer=slim.l2_regularizer(weight_decay),
+                activation_fn=tf.nn.relu,
+                normalizer_fn=slim.batch_norm,
+                padding='SAME',
+                stride=1,
+                reuse=reuse):
+            with slim.arg_scope([slim.batch_norm], **batch_norm_params):
+                depth = 256
+                branch_logits = []
 
-  if not model_options.aspp_with_batch_norm:
-    return features, end_points
-  else:
-    batch_norm_params = {
-        'is_training': is_training and fine_tune_batch_norm,
-        'decay': 0.9997,
-        'epsilon': 1e-5,
-        'scale': True,
-    }
+                if model_options.add_image_level_feature:
+                    pool_height = scale_dimension(model_options.crop_size[0],
+                                                  1. / model_options.output_stride)
+                    pool_width = scale_dimension(model_options.crop_size[1],
+                                                 1. / model_options.output_stride)
+                    image_feature = slim.avg_pool2d(
+                        features, [pool_height, pool_width], [pool_height, pool_width],
+                        padding='VALID')
+                    image_feature = slim.conv2d(
+                        image_feature, depth, 1, scope=_IMAGE_POOLING_SCOPE)
+                    image_feature = tf.image.resize_bilinear(
+                        image_feature, [pool_height, pool_width], align_corners=True)
+                    image_feature.set_shape([None, pool_height, pool_width, depth])
+                    branch_logits.append(image_feature)
 
-    with slim.arg_scope(
-        [slim.conv2d, slim.separable_conv2d],
-        weights_regularizer=slim.l2_regularizer(weight_decay),
-        activation_fn=tf.nn.relu,
-        normalizer_fn=slim.batch_norm,
-        padding='SAME',
-        stride=1,
-        reuse=reuse):
-      with slim.arg_scope([slim.batch_norm], **batch_norm_params):
-        depth = 256
-        branch_logits = []
+                # Employ a 1x1 convolution.
+                branch_logits.append(slim.conv2d(features, depth, 1,
+                                                 scope=_ASPP_SCOPE + str(0)))
 
-        if model_options.add_image_level_feature:
-          pool_height = scale_dimension(model_options.crop_size[0],
-                                        1. / model_options.output_stride)
-          pool_width = scale_dimension(model_options.crop_size[1],
-                                       1. / model_options.output_stride)
-          image_feature = slim.avg_pool2d(
-              features, [pool_height, pool_width], [pool_height, pool_width],
-              padding='VALID')
-          image_feature = slim.conv2d(
-              image_feature, depth, 1, scope=_IMAGE_POOLING_SCOPE)
-          image_feature = tf.image.resize_bilinear(
-              image_feature, [pool_height, pool_width], align_corners=True)
-          image_feature.set_shape([None, pool_height, pool_width, depth])
-          branch_logits.append(image_feature)
+                if model_options.atrous_rates:
+                    # Employ 3x3 convolutions with different atrous rates.
+                    for i, rate in enumerate(model_options.atrous_rates, 1):
+                        scope = _ASPP_SCOPE + str(i)
+                        if model_options.aspp_with_separable_conv:
+                            aspp_features = _split_separable_conv2d(
+                                features,
+                                filters=depth,
+                                rate=rate,
+                                weight_decay=weight_decay,
+                                scope=scope)
+                        else:
+                            aspp_features = slim.conv2d(
+                                features, depth, 3, rate=rate, scope=scope)
+                        branch_logits.append(aspp_features)
 
-        # Employ a 1x1 convolution.
-        branch_logits.append(slim.conv2d(features, depth, 1,
-                                         scope=_ASPP_SCOPE + str(0)))
+                # Merge branch logits.
+                concat_logits = tf.concat(branch_logits, 3)
+                concat_logits = slim.conv2d(
+                    concat_logits, depth, 1, scope=_CONCAT_PROJECTION_SCOPE)
+                concat_logits = slim.dropout(
+                    concat_logits,
+                    keep_prob=0.9,
+                    is_training=is_training,
+                    scope=_CONCAT_PROJECTION_SCOPE + '_dropout')
 
-        if model_options.atrous_rates:
-          # Employ 3x3 convolutions with different atrous rates.
-          for i, rate in enumerate(model_options.atrous_rates, 1):
-            scope = _ASPP_SCOPE + str(i)
-            if model_options.aspp_with_separable_conv:
-              aspp_features = _split_separable_conv2d(
-                  features,
-                  filters=depth,
-                  rate=rate,
-                  weight_decay=weight_decay,
-                  scope=scope)
-            else:
-              aspp_features = slim.conv2d(
-                  features, depth, 3, rate=rate, scope=scope)
-            branch_logits.append(aspp_features)
-
-        # Merge branch logits.
-        concat_logits = tf.concat(branch_logits, 3)
-        concat_logits = slim.conv2d(
-            concat_logits, depth, 1, scope=_CONCAT_PROJECTION_SCOPE)
-        concat_logits = slim.dropout(
-            concat_logits,
-            keep_prob=0.9,
-            is_training=is_training,
-            scope=_CONCAT_PROJECTION_SCOPE + '_dropout')
-
-        return concat_logits, end_points
+                return concat_logits, end_points
 
 
 def _get_logits(images,
@@ -448,7 +487,8 @@ def _get_logits(images,
                 weight_decay=0.0001,
                 reuse=None,
                 is_training=False,
-                fine_tune_batch_norm=False):
+                fine_tune_batch_norm=False,
+                location=False):
   """Gets the logits by atrous/image spatial pyramid pooling.
 
   Args:
@@ -458,7 +498,7 @@ def _get_logits(images,
     reuse: Reuse the model variables or not.
     is_training: Is training or not.
     fine_tune_batch_norm: Fine-tune the batch norm parameters or not.
-
+    location:             Add location after the xception model.
   Returns:
     outputs_to_logits: A map from output_type to logits.
   """
@@ -468,7 +508,8 @@ def _get_logits(images,
       weight_decay=weight_decay,
       reuse=reuse,
       is_training=is_training,
-      fine_tune_batch_norm=fine_tune_batch_norm)
+      fine_tune_batch_norm=fine_tune_batch_norm,
+      location=location)
 
   if model_options.decoder_output_stride is not None:
     decoder_height = scale_dimension(model_options.crop_size[0],
