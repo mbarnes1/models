@@ -261,9 +261,17 @@ def tile_along_new_axis(params, multiples, axis=-1):
     :param axis:          Axis to repeat params along
     :return tiled_params:
     """
+    shape = params.shape.as_list()
     params = tf.expand_dims(params, axis=axis)
     multiples_vec = tf.one_hot(axis, tf.rank(params), on_value=multiples, off_value=1)
     tiled_params = tf.tile(params, multiples_vec)
+    if axis >= 0:
+        shape.insert(axis, multiples)
+    elif axis == -1:
+        shape.append(multiples)
+    else:
+        raise ValueError('Axis must be >= -1')
+    tiled_params.set_shape(shape)
     return tiled_params
 
 
