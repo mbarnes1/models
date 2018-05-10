@@ -357,7 +357,7 @@ def _add_location(features):
     :return features_with_position:  A tensor of size [batch, feature_height, feature_width, feature_channels + 2]
     """
     tf.logging.info('Adding location to image features after xception model.')
-    dim = tf.shape(features, out_type=tf.int32).as_list()
+    dim = features.shape.as_list()
     batch = dim[0]
     feature_height = dim[1]
     feature_width = dim[2]
