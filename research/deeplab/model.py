@@ -376,7 +376,6 @@ def _add_location(features):
     new_shape = features.shape.as_list()
     new_shape[-1] += 2
     features_with_position.set_shape(new_shape)
-    tf.logging.info(features_with_position.shape)
     return features_with_position
 
 
