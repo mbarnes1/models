@@ -245,7 +245,7 @@ def batch_gather(params, indices):
     :return gathered_params:         [nbatch x b x ...] tensor, where gathered_params[i] are gathered from params[i]
                                      according to indices[i].
     """
-    batch_size, num_indices = indices.shape
+    batch_size, num_indices = indices.shape.as_list()
     row_indices = tf.range(batch_size)  # nbatch
     row_indices = tile_along_new_axis(row_indices, num_indices, axis=1)  # nbatch x b
     indices_nd = tf.stack([row_indices, indices], axis=2)  # nbatch x b x 2
@@ -284,7 +284,7 @@ def labels_to_adjacency(labels, m=None):
     :return adjacency:   N x M x M ByteTensor Variable.
     """
     if m is None:
-        m = tf.convert_to_tensor(labels.shape[1])
+        m = labels.shape.as_list()[1]
     labels = tile_along_new_axis(labels, m, axis=1)
     adjacency = tf.equal(labels, tf.transpose(labels, [0, 2, 1]))
     return adjacency
