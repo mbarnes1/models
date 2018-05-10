@@ -272,6 +272,8 @@ def git_hash():
 def main(unused_argv):
     tf.logging.set_verbosity(tf.logging.INFO)
     tf.logging.info('Git commit {}'.format(git_hash()))
+    if FLAGS.tf_initial_checkpoint == 'None':
+        FLAGS.tf_initial_checkpoint = None
     # Set up deployment (i.e., multi-GPUs and/or multi-replicas).
     config = model_deploy.DeploymentConfig(
         num_clones=FLAGS.num_clones,
