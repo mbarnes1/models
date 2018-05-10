@@ -365,9 +365,14 @@ def _add_location(features):
 
     # Create position matrix
     x = tf.cast(tf.range(0., 1., delta=1. / tf.cast(feature_width, tf.float32)), features.dtype)  # width
+    tf.logging.info('x shape {}'.format(x.shape))
+    x.set_shape(feature_width)
+    tf.logging.info('new x shape {}'.format(x.shape))
     x = tile_along_new_axis(x, feature_height, axis=0)  # feature_height x feature_width
+    tf.logging.info('tiled x shape {}'.format(x.shape))
 
     y = tf.cast(tf.range(0., 1., delta=1. / tf.cast(feature_height, tf.float32)), features.dtype)  # height
+    y.set_shape(feature_height)
     y = tile_along_new_axis(y, feature_width, axis=1)  # feature_height x feature_width
 
     position = tf.stack([x, y], axis=2)  # feature_height x feature_width x 2
@@ -376,7 +381,7 @@ def _add_location(features):
     features_with_position = tf.concat([features, position], 3)
     tf.logging.info(features.shape)
     tf.logging.info(position.shape)
-    new_shape = features.shape
+    new_shape = features.shape.as_list()
     new_shape[-1] += 2
     features_with_position.set_shape(new_shape)
     tf.logging.info(features_with_position.shape)
