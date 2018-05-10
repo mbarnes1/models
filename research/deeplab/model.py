@@ -374,8 +374,12 @@ def _add_location(features):
     position = tile_along_new_axis(position, batch, axis=0)  # batch x feature_height x feature_width x 2
 
     features_with_position = tf.concat([features, position], 3)
-    features_with_position.set_shape((batch, feature_height, feature_width, channels + 2))
-    
+    tf.logging.info(features.shape)
+    tf.logging.info(position.shape)
+    new_shape = features.shape
+    new_shape[-1] += 2
+    features_with_position.set_shape(new_shape)
+    tf.logging.info(features_with_position.shape)
     return features_with_position
 
 
