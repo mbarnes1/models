@@ -21,12 +21,12 @@ IGNORE_LABEL=True
 EMBEDDING_DIMENSION=0
 LOCATION=None  # either input or xception
 BASE_ATROUS_RATE=6  # if X, use --atrous_rates=X --atrous_rates=2X --atrous_rates=3X
-SCRATCH=/pylon5/ir5fp7p/mbarnes
-HOME=/home/mbarnes
-TF_INITIAL_CHECKPOINT=${SCRATCH}"/data/models/tensorflow/deeplab_imagenet/model.ckpt"
-VAL_GT_DIR=${SCRATCH}"/data/datasets/cityscapes/gtFine/val/"
-VAL_SEMANTIC_DIR=${SCRATCH}"/exp/cityscapes/train_on_train_set/vis/google/raw_segmentation_results/"
-DATASET_DIR=${SCRATCH}"/data/datasets/cityscapes/tfrecord_instances/"
+SCRATCH_PROJECT=/pylon5/ir5fp7p/mbarnes
+HOME_PROJECT=/home/mbarnes
+TF_INITIAL_CHECKPOINT=${SCRATCH_PROJECT}"/data/models/tensorflow/deeplab_imagenet/model.ckpt"
+VAL_GT_DIR=${SCRATCH_PROJECT}"/data/datasets/cityscapes/gtFine/val/"
+VAL_SEMANTIC_DIR=${SCRATCH_PROJECT}"/exp/cityscapes/train_on_train_set/vis/google/raw_segmentation_results/"
+DATASET_DIR=${SCRATCH_PROJECT}"/data/datasets/cityscapes/tfrecord_instances/"
 
 
 NCPUS_ROUND=5
@@ -170,7 +170,7 @@ DATESTAMP=$(date +"%Y%m%d")
 TIMESTAMP=$(date +"%H%M%S")
 DATETIME=${DATESTAMP}"_"${TIMESTAMP}
 EXP_NAME=${EXP_NAME}"_"${DATETIME}
-BASE_DIR=${SCRATCH}"/exp/cityscapes/train_on_train_set"
+BASE_DIR=${SCRATCH_PROJECT}"/exp/cityscapes/train_on_train_set"
 TRAIN_LOGDIR=${BASE_DIR}"/train/"${USER}"/"${EXP_NAME}
 EMB_LOGDIR=${BASE_DIR}"/emb/"${USER}"/"${EXP_NAME}
 ROUND_LOGDIR=${BASE_DIR}"/round/"${USER}"/"${EXP_NAME}
@@ -237,9 +237,9 @@ source activate
 #export LD_LIBRARY_PATH=/opt/packages/mkldnn/external/mklml_lnx_2018.0.1.20171227/lib
 #source  /opt/packages/TensorFlow/gnu_openmpi/tf1.5_gpu/bin/activate
 
-cd ${HOME}/deep_spectral_clustering/models/research/
-export PYTHONPATH=\$PYTHONPATH:${HOME}/deep_spectral_clustering/models/research/
-export PYTHONPATH=\$PYTHONPATH:${HOME}/deep_spectral_clustering/models/research/slim/
+cd ${HOME_PROJECT}/deep_spectral_clustering/models/research/
+export PYTHONPATH=\$PYTHONPATH:${HOME_PROJECT}/deep_spectral_clustering/models/research/
+export PYTHONPATH=\$PYTHONPATH:${HOME_PROJECT}/deep_spectral_clustering/models/research/slim/
 
 # Run job
 python deeplab/train.py --train_batch_size=${TRAIN_BATCH_SIZE} --num_clones=${NUM_CLONES} --logtostdout=True --training_number_of_steps=${TRAINING_NUMBER_OF_STEPS} --train_split=\"${TRAIN_SPLIT}\" --model_variant=\"${MODEL_VARIANT}\" --atrous_rates=${ATROUS1} --atrous_rates=${ATROUS2} --atrous_rates=${ATROUS3} --output_stride=${OUTPUT_STRIDE} --decoder_output_stride=${DECODER_OUTPUT_STRIDE} --train_crop_size=769 --train_crop_size=769 --tf_initial_checkpoint=${TF_INITIAL_CHECKPOINT} --train_logdir=${TRAIN_LOGDIR} --dataset_dir=${DATASET_DIR} --fine_tune_batch_norm=${FINE_TUNE_BATCH_NORM} --dataset=\"${DATASET}\" --num_readers=${NUM_READERS} --num_threads=${NUM_THREADS} --spectral=${SPECTRAL} --semantic_blocking=${SEMANTIC_BLOCKING} --packing_radius=${PACKING_RADIUS} --base_learning_rate=${BASE_LEARNING_RATE} --fast_grad=${FAST_GRAD} --ignore_label=${IGNORE_LABEL} --timestamp=False --embedding_dimension=${EMBEDDING_DIMENSION} --location=${LOCATION}
@@ -267,9 +267,9 @@ module purge
 module load tensorflow/1.5_gpu
 source activate
 
-cd $HOME/deep_spectral_clustering/models/research/
-export PYTHONPATH=\$PYTHONPATH:${HOME}/deep_spectral_clustering/models/research/
-export PYTHONPATH=\$PYTHONPATH:${HOME}/deep_spectral_clustering/models/research/slim/
+cd $HOME_PROJECT/deep_spectral_clustering/models/research/
+export PYTHONPATH=\$PYTHONPATH:${HOME_PROJECT}/deep_spectral_clustering/models/research/
+export PYTHONPATH=\$PYTHONPATH:${HOME_PROJECT}/deep_spectral_clustering/models/research/slim/
 
 # Run job
 python deeplab/vis.py  --logtostderr=${LOGTOSTDERR} --vis_split=\"val\" --model_variant=\"${MODEL_VARIANT}\" --atrous_rates=${ATROUS1} --atrous_rates=${ATROUS2} --atrous_rates=${ATROUS3} --output_stride=${OUTPUT_STRIDE} --decoder_output_stride=${DECODER_OUTPUT_STRIDE} --vis_crop_size=1025 --vis_crop_size=2049 --dataset=\"${DATASET}\" --colormap_type=\"cityscapes\" --checkpoint_dir=${TRAIN_LOGDIR} --vis_logdir=${EMB_LOGDIR} --dataset_dir=${DATASET_DIR} --save_raw_logits=True --instance=True --max_number_of_iterations=0 --keep_all_raw_logits=True --embedding_dimension=${EMBEDDING_DIMENSION} --final_train_iteration=${TRAINING_NUMBER_OF_STEPS}
@@ -297,7 +297,7 @@ module load anaconda2/5.1.0  # this environment is missing tensorboardX
 source activate $ANACONDA_HOME
 pip install --user tensorboardX
 
-cd $HOME/deep_spectral_clustering/models/research/deeplab/
+cd $HOME_PROJECT/deep_spectral_clustering/models/research/deeplab/
 
 # Run job
 python round_embeddings.py ${VAL_GT_DIR} ${VAL_SEMANTIC_DIR} ${EMB_LOGDIR}/raw_segmentation_results ${ROUND_LOGDIR} ${ROUND_TENSORBOARDDIR} --num_processes=${NCPUS_ROUND} --mean_shift_iterations=3 --packing_radius=${PACKING_RADIUS} --evaluate_interval=1000 --max_number_of_iterations=0 --final_train_iteration=${TRAINING_NUMBER_OF_STEPS}
