@@ -357,21 +357,21 @@ def _add_location(features):
     :return features_with_position:  A tensor of size [batch, feature_height, feature_width, feature_channels + 2]
     """
     tf.logging.info('Adding location to image features after xception model.')
-    dim = tf.shape(features, out_type=tf.int32)
+    dim = tf.shape(features, out_type=tf.int32).as_list()
     batch = dim[0]
     feature_height = dim[1]
     feature_width = dim[2]
     channels = dim[3]
 
     # Create position matrix
-    x = tf.cast(tf.range(0., 1., delta=1. / tf.cast(feature_width, tf.float32)), features.dtype)  # width
+    x = tf.cast(tf.range(0., 1., delta=1. / float(feature_width)), features.dtype)  # width
     tf.logging.info('x shape {}'.format(x.shape))
     x.set_shape(feature_width)
     tf.logging.info('new x shape {}'.format(x.shape))
     x = tile_along_new_axis(x, feature_height, axis=0)  # feature_height x feature_width
     tf.logging.info('tiled x shape {}'.format(x.shape))
 
-    y = tf.cast(tf.range(0., 1., delta=1. / tf.cast(feature_height, tf.float32)), features.dtype)  # height
+    y = tf.cast(tf.range(0., 1., delta=1. / float(feature_height)), features.dtype)  # height
     y.set_shape(feature_height)
     y = tile_along_new_axis(y, feature_width, axis=1)  # feature_height x feature_width
 
