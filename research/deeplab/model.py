@@ -361,6 +361,7 @@ def _add_location(features):
     batch = dim[0]
     feature_height = dim[1]
     feature_width = dim[2]
+    channels = dim[3]
 
     # Create position matrix
     x = tf.cast(tf.range(0., 1., delta=1. / tf.cast(feature_width, tf.float32)), features.dtype)  # width
@@ -373,7 +374,8 @@ def _add_location(features):
     position = tile_along_new_axis(position, batch, axis=0)  # batch x feature_height x feature_width x 2
 
     features_with_position = tf.concat([features, position], 3)
-
+    features_with_position.set_shape((batch, feature_height, feature_width, channels + 2))
+    
     return features_with_position
 
 
@@ -435,6 +437,7 @@ def _extract_features(images,
                 branch_logits = []
 
                 if model_options.add_image_level_feature:
+                    tf.logging.info('Adding image level features.')
                     pool_height = scale_dimension(model_options.crop_size[0],
                                                   1. / model_options.output_stride)
                     pool_width = scale_dimension(model_options.crop_size[1],
