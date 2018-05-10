@@ -25,6 +25,7 @@ import tensorflow as tf
 from deeplab import common
 from deeplab import model
 from deeplab.datasets import segmentation_dataset
+from deeplab.train import git_hash
 from deeplab.utils import input_generator
 from deeplab.utils import save_annotation
 
@@ -216,6 +217,7 @@ def _process_batch(sess, original_images, semantic_predictions, image_names,
 
 def main(unused_argv):
     tf.logging.set_verbosity(tf.logging.INFO)
+    tf.logging.info('Git commit {}'.format(git_hash()))
     # Get dataset-dependent information.
     label_dtype = tf.uint16 if FLAGS.instance else tf.uint8
     dataset = segmentation_dataset.get_dataset(
