@@ -27,7 +27,7 @@ from deeplab import model
 from deeplab.datasets import segmentation_dataset
 from deeplab.utils import input_generator
 from deeplab.utils import save_annotation
-from deeplab.utils.train_utils import git_hash
+from deeplab.utils.git_utils import git_hash
 
 slim = tf.contrib.slim
 

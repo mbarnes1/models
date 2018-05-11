@@ -7,7 +7,7 @@ import argparse
 from datasets.cityscapesScripts.cityscapesscripts.helpers.labels import id2hasinstances
 from datasets.cityscapesScripts.cityscapesscripts.evaluation.evalInstanceLevelSemanticLabeling import args as eval_args
 from datasets.cityscapesScripts.cityscapesscripts.evaluation.evalInstanceLevelSemanticLabeling import evaluateImgLists, printResults
-from utils.train_utils import git_hash
+from utils.git_utils import git_hash
 from functools import partial
 import glob
 import imageio

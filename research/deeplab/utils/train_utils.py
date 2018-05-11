@@ -15,17 +15,10 @@
 """Utility functions for training."""
 
 from losses import spectral_loss, spectral_loss_fast_grad
-import shlex
-import subprocess
 import tensorflow as tf
 
 slim = tf.contrib.slim
 
-
-def git_hash():
-    cmd = 'git log -n 1 --pretty="%h"'
-    hash = subprocess.check_output(shlex.split(cmd)).strip()
-    return hash
 
 def add_spectral_loss_for_each_scale(scales_to_logits,
                                      labels,

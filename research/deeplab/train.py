@@ -22,7 +22,7 @@ from deeplab import common
 from deeplab import model
 from deeplab.datasets import segmentation_dataset
 from deeplab.utils import input_generator
-from deeplab.utils import train_utils
+from deeplab.utils import git_utils, train_utils
 from deployment import model_deploy
 import socket
 
@@ -257,7 +257,7 @@ def timestamp_dir(dir):
     """
     timestamped_dir = dir.rstrip('/')
     timestamped_dir += '_{}'.format(datetime.now().strftime('%b%d-%H:%M:%S'))
-    timestamped_dir += '_VCS-{}'.format(train_utils.git_hash())
+    timestamped_dir += '_VCS-{}'.format(git_utils.git_hash())
     timestamped_dir += '_{}'.format(socket.gethostname().split('.')[0])
     return timestamped_dir
 
