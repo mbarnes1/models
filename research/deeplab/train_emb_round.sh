@@ -272,7 +272,7 @@ export PYTHONPATH=\$PYTHONPATH:${HOME_PROJECT}/deep_spectral_clustering/models/r
 export PYTHONPATH=\$PYTHONPATH:${HOME_PROJECT}/deep_spectral_clustering/models/research/slim/
 
 # Run job
-python deeplab/vis.py  --logtostderr=${LOGTOSTDERR} --vis_split=\"val\" --model_variant=\"${MODEL_VARIANT}\" --atrous_rates=${ATROUS1} --atrous_rates=${ATROUS2} --atrous_rates=${ATROUS3} --output_stride=${OUTPUT_STRIDE} --decoder_output_stride=${DECODER_OUTPUT_STRIDE} --vis_crop_size=1025 --vis_crop_size=2049 --dataset=\"${DATASET}\" --colormap_type=\"cityscapes\" --checkpoint_dir=${TRAIN_LOGDIR} --vis_logdir=${EMB_LOGDIR} --dataset_dir=${DATASET_DIR} --save_raw_logits=True --instance=True --max_number_of_iterations=0 --keep_all_raw_logits=True --embedding_dimension=${EMBEDDING_DIMENSION} --final_train_iteration=${TRAINING_NUMBER_OF_STEPS}
+python deeplab/vis.py  --logtostderr=${LOGTOSTDERR} --vis_split=\"val\" --model_variant=\"${MODEL_VARIANT}\" --atrous_rates=${ATROUS1} --atrous_rates=${ATROUS2} --atrous_rates=${ATROUS3} --output_stride=${OUTPUT_STRIDE} --decoder_output_stride=${DECODER_OUTPUT_STRIDE} --vis_crop_size=1025 --vis_crop_size=2049 --dataset=\"${DATASET}\" --colormap_type=\"cityscapes\" --checkpoint_dir=${TRAIN_LOGDIR} --vis_logdir=${EMB_LOGDIR} --dataset_dir=${DATASET_DIR} --save_raw_logits=True --instance=True --max_number_of_iterations=0 --keep_all_raw_logits=True --embedding_dimension=${EMBEDDING_DIMENSION} --final_train_iteration=${TRAINING_NUMBER_OF_STEPS} --location=${LOCATION}
 " > ${EMB_LOGDIR}/emb.sh
 
 ## Rounding ##
