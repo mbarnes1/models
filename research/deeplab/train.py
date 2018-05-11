@@ -24,9 +24,8 @@ from deeplab.datasets import segmentation_dataset
 from deeplab.utils import input_generator
 from deeplab.utils import train_utils
 from deployment import model_deploy
-import shlex
 import socket
-import subprocess
+
 import tensorflow as tf
 
 
@@ -258,20 +257,14 @@ def timestamp_dir(dir):
     """
     timestamped_dir = dir.rstrip('/')
     timestamped_dir += '_{}'.format(datetime.now().strftime('%b%d-%H:%M:%S'))
-    timestamped_dir += '_VCS-{}'.format(git_hash())
+    timestamped_dir += '_VCS-{}'.format(train_utils.git_hash())
     timestamped_dir += '_{}'.format(socket.gethostname().split('.')[0])
     return timestamped_dir
 
 
-def git_hash():
-    cmd = 'git log -n 1 --pretty="%h"'
-    hash = subprocess.check_output(shlex.split(cmd)).strip()
-    return hash
-
-
 def main(unused_argv):
     tf.logging.set_verbosity(tf.logging.INFO)
-    tf.logging.info('Git commit {}'.format(git_hash()))
+    tf.logging.info('Git commit {}'.format(train_utils.git_hash()))
     if FLAGS.tf_initial_checkpoint == 'None':
         FLAGS.tf_initial_checkpoint = None
     # Set up deployment (i.e., multi-GPUs and/or multi-replicas).
