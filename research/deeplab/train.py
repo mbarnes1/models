@@ -264,7 +264,7 @@ def timestamp_dir(dir):
 
 def main(unused_argv):
     tf.logging.set_verbosity(tf.logging.INFO)
-    tf.logging.info('Git commit {}'.format(train_utils.git_hash()))
+    tf.logging.info('Git commit {}'.format(git_utils.git_hash()))
     if FLAGS.tf_initial_checkpoint == 'None':
         FLAGS.tf_initial_checkpoint = None
     # Set up deployment (i.e., multi-GPUs and/or multi-replicas).
