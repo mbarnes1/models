@@ -23,7 +23,7 @@ EMBEDDING_DIMENSION=0
 LOCATION=None  # either input or xception
 BASE_ATROUS_RATE=6  # if X, use --atrous_rates=X --atrous_rates=2X --atrous_rates=3X
 SCRATCH_PROJECT=/pylon5/ir5fp7p/mbarnes
-HOME_PROJECT=/home/mbarnes
+HOME_PROJECT=$(pwd)
 TF_INITIAL_CHECKPOINT=${SCRATCH_PROJECT}"/data/models/tensorflow/deeplab_imagenet/model.ckpt"
 VAL_GT_DIR=${SCRATCH_PROJECT}"/data/datasets/cityscapes/gtFine/val/"
 VAL_SEMANTIC_DIR=${SCRATCH_PROJECT}"/exp/cityscapes/train_on_train_set/vis/google/raw_segmentation_results/"
