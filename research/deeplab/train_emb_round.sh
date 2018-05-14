@@ -11,6 +11,7 @@ DECODER_OUTPUT_STRIDE=4
 DATASET="cityscapes"
 BASE_LEARNING_RATE=0.01
 FINE_TUNE_BATCH_NORM=False
+ADAM=False
 NUM_READERS=4
 NUM_THREADS=8
 SPECTRAL=True
@@ -58,6 +59,11 @@ case $key in
         ;;
     --base_learning_rate)
         BASE_LEARNING_RATE="$2"
+        shift # past argument
+        shift # past value
+        ;;
+    --adam)
+        ADAM="$2"
         shift # past argument
         shift # past value
         ;;
@@ -189,6 +195,7 @@ echo "Distributed training:
 - CPU(s) per node (i.e. per 2 GPUs)     ${NCPU}
 - Training number of steps              ${TRAINING_NUMBER_OF_STEPS}
 - Base learning rate                    ${BASE_LEARNING_RATE}
+- Adam Optimizer                        ${ADAM}
 - Fine tune batch norm                  ${FINE_TUNE_BATCH_NORM}
 - Atrous rate 1                         ${ATROUS1}
 - Atrous rate 2                         ${ATROUS2}
@@ -242,7 +249,7 @@ export PYTHONPATH=\$PYTHONPATH:${HOME_PROJECT}/deep_spectral_clustering/models/r
 export PYTHONPATH=\$PYTHONPATH:${HOME_PROJECT}/deep_spectral_clustering/models/research/slim/
 
 # Run job
-python deeplab/train.py --train_batch_size=${TRAIN_BATCH_SIZE} --num_clones=${NUM_CLONES} --logtostdout=True --training_number_of_steps=${TRAINING_NUMBER_OF_STEPS} --train_split=\"${TRAIN_SPLIT}\" --model_variant=\"${MODEL_VARIANT}\" --atrous_rates=${ATROUS1} --atrous_rates=${ATROUS2} --atrous_rates=${ATROUS3} --output_stride=${OUTPUT_STRIDE} --decoder_output_stride=${DECODER_OUTPUT_STRIDE} --train_crop_size=769 --train_crop_size=769 --tf_initial_checkpoint=${TF_INITIAL_CHECKPOINT} --train_logdir=${TRAIN_LOGDIR} --dataset_dir=${DATASET_DIR} --fine_tune_batch_norm=${FINE_TUNE_BATCH_NORM} --dataset=\"${DATASET}\" --num_readers=${NUM_READERS} --num_threads=${NUM_THREADS} --spectral=${SPECTRAL} --semantic_blocking=${SEMANTIC_BLOCKING} --packing_radius=${PACKING_RADIUS} --base_learning_rate=${BASE_LEARNING_RATE} --fast_grad=${FAST_GRAD} --ignore_label=${IGNORE_LABEL} --timestamp=False --embedding_dimension=${EMBEDDING_DIMENSION} --location=${LOCATION}
+python deeplab/train.py --train_batch_size=${TRAIN_BATCH_SIZE} --num_clones=${NUM_CLONES} --logtostdout=True --training_number_of_steps=${TRAINING_NUMBER_OF_STEPS} --train_split=\"${TRAIN_SPLIT}\" --model_variant=\"${MODEL_VARIANT}\" --atrous_rates=${ATROUS1} --atrous_rates=${ATROUS2} --atrous_rates=${ATROUS3} --output_stride=${OUTPUT_STRIDE} --decoder_output_stride=${DECODER_OUTPUT_STRIDE} --train_crop_size=769 --train_crop_size=769 --tf_initial_checkpoint=${TF_INITIAL_CHECKPOINT} --train_logdir=${TRAIN_LOGDIR} --dataset_dir=${DATASET_DIR} --fine_tune_batch_norm=${FINE_TUNE_BATCH_NORM} --dataset=\"${DATASET}\" --num_readers=${NUM_READERS} --num_threads=${NUM_THREADS} --spectral=${SPECTRAL} --semantic_blocking=${SEMANTIC_BLOCKING} --packing_radius=${PACKING_RADIUS} --base_learning_rate=${BASE_LEARNING_RATE} --fast_grad=${FAST_GRAD} --ignore_label=${IGNORE_LABEL} --timestamp=False --embedding_dimension=${EMBEDDING_DIMENSION} --location=${LOCATION} --adam=${ADAM}
 " > ${TRAIN_LOGDIR}/train.sh
 
 ## Evaluation ##
