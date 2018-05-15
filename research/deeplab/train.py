@@ -347,16 +347,16 @@ def main(unused_argv):
 
         # Build the optimizer based on the device specification.
         with tf.device(config.optimizer_device()):
-            learning_rate = train_utils.get_model_learning_rate(
-                FLAGS.learning_policy, FLAGS.base_learning_rate,
-                FLAGS.learning_rate_decay_step, FLAGS.learning_rate_decay_factor,
-                FLAGS.training_number_of_steps, FLAGS.learning_power,
-                FLAGS.slow_start_step, FLAGS.slow_start_learning_rate)
             if FLAGS.adam:
-                optimizer = tf.train.AdamOptimizer(learning_rate)
+                optimizer = tf.train.AdamOptimizer(FLAGS.base_learning_rate)
             else:
+                learning_rate = train_utils.get_model_learning_rate(
+                    FLAGS.learning_policy, FLAGS.base_learning_rate,
+                    FLAGS.learning_rate_decay_step, FLAGS.learning_rate_decay_factor,
+                    FLAGS.training_number_of_steps, FLAGS.learning_power,
+                    FLAGS.slow_start_step, FLAGS.slow_start_learning_rate)
                 optimizer = tf.train.MomentumOptimizer(learning_rate, FLAGS.momentum)
-            summaries.add(tf.summary.scalar('learning_rate', learning_rate))
+                summaries.add(tf.summary.scalar('learning_rate', learning_rate))
 
         startup_delay_steps = FLAGS.task * FLAGS.startup_delay_steps
         # for variable in slim.get_model_variables():
