@@ -71,7 +71,7 @@ _CITYSCAPES_INFORMATION = DatasetDescriptor(
         'train': 2975,
         'val': 500,
     },
-    num_classes=19,
+    num_classes=20,
     ignore_label=255,
 )
 
