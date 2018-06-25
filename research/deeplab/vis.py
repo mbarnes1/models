@@ -104,8 +104,7 @@ _PREDICTION_FORMAT = '%06d_prediction'
 
 # To evaluate Cityscapes results on the evaluation server, the labels used
 # during training should be mapped to the labels for evaluation.
-_CITYSCAPES_TRAIN_ID_TO_EVAL_ID = [7, 8, 11, 12, 13, 17, 19, 20, 21, 22,
-                                   23, 24, 25, 26, 27, 28, 31, 32, 33]
+_CITYSCAPES_TRAIN_ID_TO_EVAL_ID = [0, 24, 25, 26, 27, 28, 31, 32, 33]
 
 
 def _convert_train_id_to_eval_id(prediction, train_id_to_eval_id):
