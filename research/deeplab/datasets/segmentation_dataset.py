@@ -70,6 +70,7 @@ _CITYSCAPES_INFORMATION = DatasetDescriptor(
     splits_to_sizes={
         'train': 2975,
         'val': 500,
+        'test': 1525
     },
     num_classes=19,
     ignore_label=255,
@@ -104,7 +105,7 @@ def get_dataset(dataset_name, split_name, dataset_dir):
 
   Args:
     dataset_name: Dataset name.
-    split_name: A train/val Split name.
+    split_name: A train/val/test Split name.
     dataset_dir: The directory of the dataset sources.
 
   Returns:
@@ -139,11 +140,7 @@ def get_dataset(dataset_name, split_name, dataset_dir):
       'image/height': tf.FixedLenFeature(
           (), tf.int64, default_value=0),
       'image/width': tf.FixedLenFeature(
-          (), tf.int64, default_value=0),
-      'image/segmentation/class/encoded': tf.FixedLenFeature(
-          (), tf.string, default_value=''),
-      'image/segmentation/class/format': tf.FixedLenFeature(
-          (), tf.string, default_value='png'),
+          (), tf.int64, default_value=0)
   }
   items_to_handlers = {
       'image': tfexample_decoder.Image(
@@ -153,11 +150,14 @@ def get_dataset(dataset_name, split_name, dataset_dir):
       'image_name': tfexample_decoder.Tensor('image/filename'),
       'height': tfexample_decoder.Tensor('image/height'),
       'width': tfexample_decoder.Tensor('image/width'),
-      'labels_class': tfexample_decoder.Image(
+  }
+  if split_name != 'test':
+      keys_to_features['image/segmentation/class/encoded'] = tf.FixedLenFeature((), tf.string, default_value='')
+      keys_to_features['image/segmentation/class/format'] = tf.FixedLenFeature((), tf.string, default_value='png')
+      items_to_handlers['labels_class'] = tfexample_decoder.Image(
           image_key='image/segmentation/class/encoded',
           format_key='image/segmentation/class/format',
-          channels=1),
-  }
+          channels=1)
 
   decoder = tfexample_decoder.TFExampleDecoder(
       keys_to_features, items_to_handlers)
