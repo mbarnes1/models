@@ -40,7 +40,7 @@ def _get_data(data_provider, dataset_split):
   Raises:
     ValueError: Failed to find label.
   """
-  if common.LABELS_CLASS not in data_provider.list_items():
+  if dataset_split != common.TEST_SET and common.LABELS_CLASS not in data_provider.list_items():
     raise ValueError('Failed to find labels.')
 
   image, height, width = data_provider.get(
